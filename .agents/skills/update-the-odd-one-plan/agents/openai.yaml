@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update THE ODD ONE Plan"
+  short_description: "Keep the game plan and implementation synchronized"
+  default_prompt: "Use $update-the-odd-one-plan to update the game and keep the canonical plan current."
