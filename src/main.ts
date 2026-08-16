@@ -5,6 +5,7 @@ type RuleId = 'redJump' | 'hatWave' | 'centerSpin' | 'bellJump' | 'greetingWave'
 type ActionName = 'jump' | 'wave' | 'spin';
 
 interface RuleDefinition { id: RuleId; label: string; action: ActionName; }
+interface ActivePointer { x: number; y: number; startX: number; startY: number; }
 interface Subject {
   id: number;
   root: THREE.Group;
@@ -32,8 +33,10 @@ const RULES: RuleDefinition[] = [
 ];
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
+const touchMode = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).has('touch');
+document.body.classList.toggle('touch-mode', touchMode);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, touchMode ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -44,7 +47,7 @@ renderer.toneMappingExposure = 1.05;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x171713);
 scene.fog = new THREE.FogExp2(0x171713, 0.018);
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 180);
+const camera = new THREE.PerspectiveCamera(touchMode&&innerHeight>innerWidth?72:62, innerWidth / innerHeight, 0.1, 180);
 camera.position.set(0, 13, 24);
 camera.rotation.order = 'YXZ';
 
@@ -52,7 +55,7 @@ scene.add(new THREE.HemisphereLight(0xdde6d3, 0x31291c, 1.35));
 const sun = new THREE.DirectionalLight(0xffe2ae, 3.2);
 sun.position.set(-16, 24, 12);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(touchMode ? 1024 : 2048, touchMode ? 1024 : 2048);
 sun.shadow.camera.left = sun.shadow.camera.bottom = -35;
 sun.shadow.camera.right = sun.shadow.camera.top = 35;
 scene.add(sun);
@@ -157,8 +160,55 @@ let bellTimer = 8;
 let yaw = 0;
 let pitch = -.28;
 let hovered: Subject | null = null;
+let selectedSubject: Subject | null = null;
 const keys = new Set<string>();
 const raycaster = new THREE.Raycaster();
+const activePointers = new Map<number,ActivePointer>();
+const mobileTarget = new THREE.Vector3(0,1.8,0);
+const mobileSpherical = new THREE.Spherical(35,1.06,0);
+let previousGestureCenter = new THREE.Vector2();
+let previousGestureDistance = 0;
+let mobileDragged = false;
+let mobileTutorialComplete = false;
+let mobileTutorialStep = 0;
+const mobileHint = document.querySelector<HTMLElement>('#mobile-hint')!;
+const mobileSelection = document.querySelector<HTMLElement>('#mobile-selection')!;
+const mobileSubjectLabel = document.querySelector<HTMLElement>('#mobile-subject')!;
+
+function resetMobileCamera() {
+  mobileTarget.set(0,1.8,0);
+  mobileSpherical.set(innerHeight > innerWidth ? 39 : 35,1.06,0);
+  applyMobileCamera();
+}
+
+function applyMobileCamera() {
+  camera.position.copy(mobileTarget).add(new THREE.Vector3().setFromSpherical(mobileSpherical));
+  camera.lookAt(mobileTarget);
+}
+
+function setMobileHint(message:string) {
+  if(!touchMode||mobileTutorialComplete)return;
+  mobileHint.textContent=message;
+  mobileHint.classList.add('show');
+}
+
+function advanceMobileTutorial(step:'orbit'|'multi'|'select') {
+  if(mobileTutorialComplete)return;
+  if(step==='orbit'&&mobileTutorialStep===0) { mobileTutorialStep=1; setMobileHint('TWO FINGERS · MOVE & ZOOM'); }
+  if(step==='multi'&&mobileTutorialStep<=1) { mobileTutorialStep=2; setMobileHint('TAP A SUBJECT · SELECT'); }
+  if(step==='select') { mobileTutorialStep=3; mobileTutorialComplete=true; mobileHint.classList.remove('show'); }
+}
+
+function selectSubject(subject:Subject|null) {
+  selectedSubject=subject;
+  hovered=subject;
+  document.body.classList.toggle('selection-active',!!subject);
+  mobileSelection.classList.toggle('open',!!subject);
+  if(subject) {
+    mobileSubjectLabel.textContent=`SUBJECT ${String(subject.id+1).padStart(2,'0')}`;
+    advanceMobileTutorial('select');
+  }
+}
 
 function randomWaypoint(out: THREE.Vector3) {
   out.set(THREE.MathUtils.randFloat(-24,24),0,THREE.MathUtils.randFloat(-24,24));
@@ -185,7 +235,7 @@ function configureRound() {
   }
   subjects.forEach((s,i)=>{
     s.root.position.set((i%4-1.5)*6.5,0,(Math.floor(i/4)-1)*8);
-    randomWaypoint(s.waypoint); s.action=null; s.actionTime=0; s.body.position.y=0; s.body.rotation.set(0,0,0); s.marker.material.opacity=0;
+    randomWaypoint(s.waypoint); s.action=null; s.actionTime=0; s.body.position.y=0; s.body.rotation.set(0,0,0); s.marker.material.opacity=0;s.marker.material.color.set(0xffffff);
     Object.keys(s.cooldowns).forEach(k=>s.cooldowns[k as RuleId]=0); s.lastCenterInside=false;
   });
   attempts=3; roundTime=0; bellTimer=THREE.MathUtils.randFloat(7,10); updateAttempts();
@@ -245,6 +295,87 @@ function processProximityRules() {
   }
 }
 
+function pickSubjectAt(clientX:number,clientY:number) {
+  const rect=canvas.getBoundingClientRect();
+  const pointer=new THREE.Vector2((clientX-rect.left)/rect.width*2-1,-((clientY-rect.top)/rect.height)*2+1);
+  raycaster.setFromCamera(pointer,camera);
+  const hit=raycaster.intersectObjects(pickables,false)[0];
+  if(hit&&hit.distance<70) return subjects[hit.object.userData.subjectId as number];
+  let nearest:Subject|null=null; let nearestDistance=38*38;
+  for(const subject of subjects) {
+    const projected=subject.root.position.clone().add(new THREE.Vector3(0,2.7,0)).project(camera);
+    if(projected.z<-1||projected.z>1)continue;
+    const screenX=rect.left+(projected.x+1)*rect.width/2;
+    const screenY=rect.top+(1-projected.y)*rect.height/2;
+    const distance=(screenX-clientX)**2+(screenY-clientY)**2;
+    if(distance<nearestDistance){nearestDistance=distance;nearest=subject;}
+  }
+  return nearest;
+}
+
+function beginTouchPointer(event:PointerEvent) {
+  if(!touchMode||!playing)return;
+  event.preventDefault();
+  canvas.setPointerCapture(event.pointerId);
+  activePointers.set(event.pointerId,{x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY});
+  if(activePointers.size===1) mobileDragged=false;
+  if(activePointers.size===2) {
+    const points=[...activePointers.values()];
+    previousGestureCenter.set((points[0].x+points[1].x)/2,(points[0].y+points[1].y)/2);
+    previousGestureDistance=Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);
+    mobileDragged=true;
+  }
+}
+
+function moveTouchPointer(event:PointerEvent) {
+  const point=activePointers.get(event.pointerId);
+  if(!touchMode||!point)return;
+  event.preventDefault();
+  const previousX=point.x,previousY=point.y;
+  point.x=event.clientX;point.y=event.clientY;
+  if(activePointers.size===1) {
+    const totalDistance=Math.hypot(point.x-point.startX,point.y-point.startY);
+    if(totalDistance>6)mobileDragged=true;
+    if(mobileDragged) {
+      mobileSpherical.theta-=(point.x-previousX)*.007;
+      mobileSpherical.phi=THREE.MathUtils.clamp(mobileSpherical.phi+(point.y-previousY)*.005,.45,1.28);
+      applyMobileCamera();
+      advanceMobileTutorial('orbit');
+    }
+    return;
+  }
+  if(activePointers.size===2) {
+    const points=[...activePointers.values()];
+    const center=new THREE.Vector2((points[0].x+points[1].x)/2,(points[0].y+points[1].y)/2);
+    const distance=Math.max(1,Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y));
+    const delta=center.clone().sub(previousGestureCenter);
+    const panScale=mobileSpherical.radius*.0017;
+    const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);right.y=0;right.normalize();
+    const forward=mobileTarget.clone().sub(camera.position);forward.y=0;forward.normalize();
+    mobileTarget.addScaledVector(right,-delta.x*panScale).addScaledVector(forward,delta.y*panScale);
+    mobileTarget.x=THREE.MathUtils.clamp(mobileTarget.x,-22,22);mobileTarget.z=THREE.MathUtils.clamp(mobileTarget.z,-22,22);
+    if(previousGestureDistance>0) mobileSpherical.radius=THREE.MathUtils.clamp(mobileSpherical.radius*previousGestureDistance/distance,15,50);
+    previousGestureCenter.copy(center);previousGestureDistance=distance;
+    applyMobileCamera();
+    advanceMobileTutorial('multi');
+  }
+}
+
+function endTouchPointer(event:PointerEvent) {
+  const point=activePointers.get(event.pointerId);
+  if(!touchMode||!point)return;
+  event.preventDefault();
+  const wasMulti=activePointers.size>1;
+  activePointers.delete(event.pointerId);
+  if(!wasMulti&&!mobileDragged&&Math.hypot(event.clientX-point.startX,event.clientY-point.startY)<8) selectSubject(pickSubjectAt(event.clientX,event.clientY));
+  if(activePointers.size===1) {
+    const remaining=[...activePointers.values()][0];remaining.startX=remaining.x;remaining.startY=remaining.y;mobileDragged=true;
+  }
+  if(activePointers.size<2)previousGestureDistance=0;
+}
+
+function cancelTouchPointers(){activePointers.clear();previousGestureDistance=0;mobileDragged=false;}
+
 function updateCamera(dt:number) {
   if(document.pointerLockElement!==canvas) return;
   const forward=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); forward.y=0; forward.normalize();
@@ -257,6 +388,10 @@ function updateCamera(dt:number) {
 }
 
 function updateTargeting() {
+  if(touchMode) {
+    subjects.forEach(s=>s.marker.material.opacity=selectedSubject===s?1:0);
+    return;
+  }
   raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
   const hit=raycaster.intersectObjects(pickables,false)[0];
   hovered=hit && hit.distance<45 ? subjects[hit.object.userData.subjectId as number] : null;
@@ -265,11 +400,12 @@ function updateTargeting() {
   const label=document.querySelector('#target-label')!; label.textContent=hovered?`SUBJECT ${String(hovered.id+1).padStart(2,'0')}`:''; label.classList.toggle('show',!!hovered);
 }
 
-function accuse() {
-  if(!playing||!hovered)return;
-  if(hovered.id===oddId){endRound(true);return;}
-  attempts--; updateAttempts(); showToast(`SUBJECT ${String(hovered.id+1).padStart(2,'0')} CLEARED · ${attempts} CHANCE${attempts===1?'':'S'} LEFT`,true,1600);
-  hovered.marker.material.color.set(0xe65b47);
+function accuse(subject=hovered) {
+  if(!playing||!subject)return;
+  if(subject.id===oddId){endRound(true);return;}
+  attempts--; updateAttempts(); showToast(`SUBJECT ${String(subject.id+1).padStart(2,'0')} CLEARED · ${attempts} CHANCE${attempts===1?'':'S'} LEFT`,true,1600);
+  subject.marker.material.color.set(0xe65b47);
+  if(touchMode)selectSubject(null);
   if(attempts<=0) endRound(false);
 }
 
@@ -277,16 +413,22 @@ function updateAttempts(){const el=document.querySelector('#attempts')!;el.inner
 let toastTimeout=0;
 function showToast(message:string,bad=false,duration=1200){const el=document.querySelector('#toast')!;el.textContent=message;el.className=`toast show${bad?' bad':''}`;clearTimeout(toastTimeout);toastTimeout=window.setTimeout(()=>el.className='toast',duration)}
 
-function startRound(){configureRound();playing=true;camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');canvas.requestPointerLock()}
-function endRound(success:boolean){playing=false;document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
+function startRound(){configureRound();playing=true;document.body.classList.add('round-active');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);canvas.requestPointerLock()}}
+function endRound(success:boolean){playing=false;document.body.classList.remove('round-active');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
 
 document.querySelector('#play-button')!.addEventListener('click',startRound);
 document.querySelector('#replay-button')!.addEventListener('click',startRound);
-canvas.addEventListener('click',()=>{if(!playing)return;if(document.pointerLockElement!==canvas)canvas.requestPointerLock();else accuse()});
+canvas.addEventListener('click',()=>{if(touchMode||!playing)return;if(document.pointerLockElement!==canvas)canvas.requestPointerLock();else accuse()});
+canvas.addEventListener('pointerdown',beginTouchPointer);
+canvas.addEventListener('pointermove',moveTouchPointer);
+canvas.addEventListener('pointerup',endTouchPointer);
+canvas.addEventListener('pointercancel',cancelTouchPointers);
+document.querySelector('#camera-reset')!.addEventListener('click',()=>{if(playing)resetMobileCamera()});
+document.querySelector('#mobile-accuse')!.addEventListener('click',()=>accuse(selectedSubject));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
 addEventListener('keydown',e=>keys.add(e.code));addEventListener('keyup',e=>keys.delete(e.code));
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.fov=touchMode&&innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 
 const clock=new THREE.Clock(); let proximityTimer=0;
-function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(playing){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();subjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
+function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(playing){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();subjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode)applyMobileCamera();else updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
 frame();

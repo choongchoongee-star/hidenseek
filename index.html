@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#10100f" />
     <title>THE ODD ONE</title>
   </head>
@@ -21,6 +21,12 @@
       <div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i><span></span></div>
       <div id="target-label" class="target-label"></div>
       <div id="toast" class="toast"></div>
+      <button id="camera-reset" class="mobile-ui camera-reset" aria-label="Reset camera">⌂</button>
+      <div id="mobile-hint" class="mobile-ui mobile-hint" aria-live="polite"></div>
+      <section id="mobile-selection" class="mobile-ui mobile-selection" aria-live="polite">
+        <div><span>SELECTED SUBJECT</span><b id="mobile-subject">SUBJECT 01</b></div>
+        <button id="mobile-accuse">ACCUSE <b>→</b></button>
+      </section>
       <div class="controls hud">
         <span><kbd>WASD</kbd> MOVE</span><span><kbd>Q E</kbd> ALTITUDE</span>
         <span><kbd>SHIFT</kbd> BOOST</span><span><kbd>CLICK</kbd> ACCUSE</span>
@@ -31,7 +37,7 @@
         <p>Eleven subjects follow one hidden rule.<br/>One subject does the opposite.</p>
         <div class="rule-strip"><span>12 SUBJECTS</span><span>5 RULES</span><span>3 CHANCES</span></div>
         <button id="play-button" class="primary">BEGIN OBSERVATION <b>→</b></button>
-        <small>HEADPHONES RECOMMENDED · DESKTOP ONLY</small>
+        <small id="device-note">HEADPHONES RECOMMENDED · DESKTOP & MOBILE</small>
       </section>
       <section id="end-screen" class="screen result-screen">
         <div id="result-kicker" class="eyebrow"></div>
