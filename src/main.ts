@@ -172,6 +172,7 @@ let playing = false;
 let paused = false;
 let soundEnabled = true;
 let pointerLockAcquired = false;
+let suppressAccusationUntil = 0;
 let roundTime = 0;
 let bellTimer = 8;
 let yaw = 0;
@@ -489,8 +490,9 @@ function endRound(success:boolean){playing=false;paused=false;pointerLockAcquire
 
 document.querySelector('#play-button')!.addEventListener('click',startRound);
 document.querySelector('#replay-button')!.addEventListener('click',startRound);
-canvas.addEventListener('click',()=>{if(touchMode||!playing)return;if(document.pointerLockElement!==canvas)requestGamePointerLock();else accuse()});
-canvas.addEventListener('contextmenu',event=>{event.preventDefault();if(!touchMode&&playing&&!paused&&hovered)cycleSubjectMark(hovered)});
+canvas.addEventListener('click',event=>{if(event.button!==0||performance.now()<suppressAccusationUntil||touchMode||!playing)return;if(document.pointerLockElement!==canvas)requestGamePointerLock();else accuse()});
+canvas.addEventListener('contextmenu',event=>event.preventDefault());
+canvas.addEventListener('pointerdown',event=>{if(!touchMode&&event.button===2){event.preventDefault();suppressAccusationUntil=performance.now()+400;if(playing&&!paused&&hovered)cycleSubjectMark(hovered)}});
 canvas.addEventListener('pointerdown',beginTouchPointer);
 canvas.addEventListener('pointermove',moveTouchPointer);
 canvas.addEventListener('pointerup',endTouchPointer);
