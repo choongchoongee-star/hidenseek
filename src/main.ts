@@ -3,6 +3,7 @@ import './style.css';
 
 type RuleId = 'redJump' | 'hatWave' | 'centerSpin' | 'bellJump' | 'greetingWave';
 type ActionName = 'jump' | 'wave' | 'spin';
+type SubjectMark = '?' | '!' | null;
 
 interface RuleDefinition { id: RuleId; label: string; action: ActionName; }
 interface ActivePointer { x: number; y: number; startX: number; startY: number; }
@@ -13,6 +14,8 @@ interface Subject {
   leftArm: THREE.Group;
   rightArm: THREE.Group;
   marker: THREE.Sprite;
+  markSprite: THREE.Sprite;
+  mark: SubjectMark;
   hat: boolean;
   red: boolean;
   obeys: Record<RuleId, boolean>;
@@ -108,6 +111,8 @@ const hairColors = [0x17130f,0x4a2d1a,0xd0aa65,0x6a6a62];
 const subjects: Subject[] = [];
 const pickables: THREE.Object3D[] = [];
 const markerTexture = makeMarkerTexture();
+const questionTexture = makeSymbolTexture('?', '#74b9e8');
+const alertTexture = makeSymbolTexture('!', '#e65b47');
 
 function mat(color: number) { return new THREE.MeshStandardMaterial({ color, roughness: .85 }); }
 function mesh(geometry: THREE.BufferGeometry, material: THREE.Material, parent: THREE.Object3D, y = 0) {
@@ -119,6 +124,13 @@ function makeMarkerTexture() {
   const ctx = c.getContext('2d')!; ctx.fillStyle='#f4b942'; ctx.beginPath(); ctx.roundRect(2,2,124,60,10); ctx.fill();
   ctx.fillStyle='#171713'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='700 30px Space Grotesk'; ctx.fillText('SUBJECT',64,32);
   const texture = new THREE.CanvasTexture(c); texture.colorSpace=THREE.SRGBColorSpace; return texture;
+}
+
+function makeSymbolTexture(symbol:string,color:string) {
+  const c=document.createElement('canvas');c.width=128;c.height=128;
+  const ctx=c.getContext('2d')!;ctx.fillStyle='rgba(17,17,15,.92)';ctx.beginPath();ctx.arc(64,64,58,0,Math.PI*2);ctx.fill();
+  ctx.lineWidth=7;ctx.strokeStyle=color;ctx.stroke();ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 82px Space Grotesk';ctx.fillText(symbol,64,66);
+  const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;return texture;
 }
 
 function makeSubject(id: number): Subject {
@@ -143,11 +155,13 @@ function makeSubject(id: number): Subject {
     const cap=mesh(new THREE.CylinderGeometry(.44,.52,.42,12),mat(id%2?0xd3ac3b:0x454c3f),body,4.67); cap.userData.subjectId=id;
   }
   const marker = new THREE.Sprite(new THREE.SpriteMaterial({map:markerTexture,transparent:true,depthTest:false,opacity:0}));
-  marker.scale.set(2.8,1.4,1); marker.position.y=5.5; root.add(marker);
+  marker.scale.set(2.8,1.4,1); marker.position.y=6.45; root.add(marker);
+  const markSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:questionTexture,transparent:true,depthTest:false,opacity:0}));
+  markSprite.scale.set(1.45,1.45,1);markSprite.position.y=5.25;root.add(markSprite);
   root.position.set((id%4-1.5)*6.5,0,(Math.floor(id/4)-1)*8);
   root.traverse(child=>{ if((child as THREE.Mesh).isMesh){ child.userData.subjectId=id; pickables.push(child); }});
   world.add(root);
-  return { id,root,body,leftArm,rightArm,marker,hat,red:shirt===0xc94f43,obeys:{} as Record<RuleId,boolean>,waypoint:new THREE.Vector3(),speed:1.7+Math.random()*.6,action:null,actionTime:0,cooldowns:{redJump:0,hatWave:0,centerSpin:0,bellJump:0,greetingWave:0},lastCenterInside:false };
+  return { id,root,body,leftArm,rightArm,marker,markSprite,mark:null,hat,red:shirt===0xc94f43,obeys:{} as Record<RuleId,boolean>,waypoint:new THREE.Vector3(),speed:1.7+Math.random()*.6,action:null,actionTime:0,cooldowns:{redJump:0,hatWave:0,centerSpin:0,bellJump:0,greetingWave:0},lastCenterInside:false };
 }
 for(let i=0;i<12;i++) subjects.push(makeSubject(i));
 
@@ -155,6 +169,9 @@ let targetRule = RULES[0];
 let oddId = 0;
 let attempts = 3;
 let playing = false;
+let paused = false;
+let soundEnabled = true;
+let pointerLockAcquired = false;
 let roundTime = 0;
 let bellTimer = 8;
 let yaw = 0;
@@ -174,6 +191,8 @@ let mobileTutorialStep = 0;
 const mobileHint = document.querySelector<HTMLElement>('#mobile-hint')!;
 const mobileSelection = document.querySelector<HTMLElement>('#mobile-selection')!;
 const mobileSubjectLabel = document.querySelector<HTMLElement>('#mobile-subject')!;
+const questionButton = document.querySelector<HTMLButtonElement>('#mark-question')!;
+const alertButton = document.querySelector<HTMLButtonElement>('#mark-alert')!;
 
 function resetMobileCamera() {
   mobileTarget.set(0,1.8,0);
@@ -208,6 +227,26 @@ function selectSubject(subject:Subject|null) {
     mobileSubjectLabel.textContent=`SUBJECT ${String(subject.id+1).padStart(2,'0')}`;
     advanceMobileTutorial('select');
   }
+  updateMarkButtons();
+}
+
+function updateMarkButtons() {
+  questionButton.classList.toggle('active',selectedSubject?.mark==='?');
+  alertButton.classList.toggle('active',selectedSubject?.mark==='!');
+  questionButton.setAttribute('aria-pressed',String(selectedSubject?.mark==='?'));
+  alertButton.setAttribute('aria-pressed',String(selectedSubject?.mark==='!'));
+}
+
+function setSubjectMark(subject:Subject,mark:SubjectMark) {
+  subject.mark=mark;
+  if(mark)subject.markSprite.material.map=mark==='?'?questionTexture:alertTexture;
+  subject.markSprite.material.opacity=mark?1:0;
+  subject.markSprite.material.needsUpdate=true;
+  updateMarkButtons();
+}
+
+function cycleSubjectMark(subject:Subject) {
+  setSubjectMark(subject,subject.mark===null?'?':subject.mark==='?'?'!':null);
 }
 
 function randomWaypoint(out: THREE.Vector3) {
@@ -235,7 +274,7 @@ function configureRound() {
   }
   subjects.forEach((s,i)=>{
     s.root.position.set((i%4-1.5)*6.5,0,(Math.floor(i/4)-1)*8);
-    randomWaypoint(s.waypoint); s.action=null; s.actionTime=0; s.body.position.y=0; s.body.rotation.set(0,0,0); s.marker.material.opacity=0;s.marker.material.color.set(0xffffff);
+    randomWaypoint(s.waypoint); s.action=null; s.actionTime=0; s.body.position.y=0; s.body.rotation.set(0,0,0); s.marker.material.opacity=0;s.marker.material.color.set(0xffffff);setSubjectMark(s,null);
     Object.keys(s.cooldowns).forEach(k=>s.cooldowns[k as RuleId]=0); s.lastCenterInside=false;
   });
   attempts=3; roundTime=0; bellTimer=THREE.MathUtils.randFloat(7,10); updateAttempts();
@@ -256,6 +295,7 @@ function ringBell() {
 }
 
 function playBellSound() {
+  if(!soundEnabled)return;
   const AudioCtx=window.AudioContext || (window as typeof window & {webkitAudioContext:typeof AudioContext}).webkitAudioContext;
   const ctx=new AudioCtx(); const gain=ctx.createGain(); gain.connect(ctx.destination); gain.gain.setValueAtTime(.15,ctx.currentTime); gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+1.5);
   [523.25,659.25,783.99].forEach((freq,i)=>{const osc=ctx.createOscillator();osc.type='sine';osc.frequency.value=freq;osc.connect(gain);osc.start(ctx.currentTime+i*.035);osc.stop(ctx.currentTime+1.5);});
@@ -291,8 +331,15 @@ function processProximityRules() {
       if(b.red) trigger(a,'redJump'); if(a.red) trigger(b,'redJump');
       if(b.hat) trigger(a,'hatWave'); if(a.hat) trigger(b,'hatWave');
     }
-    if(d<4) { trigger(a,'greetingWave'); trigger(b,'greetingWave'); }
+    if(d<4&&areFacingEachOther(a,b)) { trigger(a,'greetingWave'); trigger(b,'greetingWave'); }
   }
+}
+
+function areFacingEachOther(a:Subject,b:Subject) {
+  const toB=b.root.position.clone().sub(a.root.position);toB.y=0;if(toB.lengthSq()===0)return false;toB.normalize();
+  const forwardA=new THREE.Vector3(0,0,1).applyQuaternion(a.root.quaternion);forwardA.y=0;forwardA.normalize();
+  const forwardB=new THREE.Vector3(0,0,1).applyQuaternion(b.root.quaternion);forwardB.y=0;forwardB.normalize();
+  return forwardA.dot(toB)>.65&&forwardB.dot(toB.clone().negate())>.65;
 }
 
 function pickSubjectAt(clientX:number,clientY:number) {
@@ -401,7 +448,7 @@ function updateTargeting() {
 }
 
 function accuse(subject=hovered) {
-  if(!playing||!subject)return;
+  if(!playing||paused||!subject)return;
   if(subject.id===oddId){endRound(true);return;}
   attempts--; updateAttempts(); showToast(`SUBJECT ${String(subject.id+1).padStart(2,'0')} CLEARED · ${attempts} CHANCE${attempts===1?'':'S'} LEFT`,true,1600);
   subject.marker.material.color.set(0xe65b47);
@@ -413,22 +460,52 @@ function updateAttempts(){const el=document.querySelector('#attempts')!;el.inner
 let toastTimeout=0;
 function showToast(message:string,bad=false,duration=1200){const el=document.querySelector('#toast')!;el.textContent=message;el.className=`toast show${bad?' bad':''}`;clearTimeout(toastTimeout);toastTimeout=window.setTimeout(()=>el.className='toast',duration)}
 
-function startRound(){configureRound();playing=true;document.body.classList.add('round-active');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);canvas.requestPointerLock()}}
-function endRound(success:boolean){playing=false;document.body.classList.remove('round-active');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
+function setPaused(value:boolean) {
+  if(!playing||paused===value)return;
+  paused=value;keys.clear();cancelTouchPointers();
+  const screen=document.querySelector<HTMLElement>('#pause-screen')!;screen.classList.toggle('open',paused);screen.setAttribute('aria-hidden',String(!paused));
+  document.body.classList.toggle('paused',paused);
+  if(paused&&document.pointerLockElement===canvas)document.exitPointerLock();
+  if(!paused&&!touchMode)requestGamePointerLock();
+}
+
+function updateSoundButtons() {
+  for(const button of document.querySelectorAll<HTMLButtonElement>('#sound-toggle,#pause-sound-toggle')) {
+    button.textContent=soundEnabled?'SOUND ON':'SOUND OFF';button.classList.toggle('muted',!soundEnabled);button.setAttribute('aria-pressed',String(soundEnabled));button.setAttribute('aria-label',soundEnabled?'Turn sound off':'Turn sound on');
+  }
+}
+
+function toggleSound(){soundEnabled=!soundEnabled;updateSoundButtons()}
+
+function requestGamePointerLock() {
+  try {
+    const result=canvas.requestPointerLock();
+    if(result instanceof Promise)result.catch(()=>undefined);
+  } catch { /* Pointer Lock can be unavailable in embedded browser previews. */ }
+}
+
+function startRound(){configureRound();playing=true;paused=false;pointerLockAcquired=false;document.body.classList.add('round-active');document.body.classList.remove('paused');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
+function endRound(success:boolean){playing=false;paused=false;pointerLockAcquired=false;document.body.classList.remove('round-active','paused');document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
 
 document.querySelector('#play-button')!.addEventListener('click',startRound);
 document.querySelector('#replay-button')!.addEventListener('click',startRound);
-canvas.addEventListener('click',()=>{if(touchMode||!playing)return;if(document.pointerLockElement!==canvas)canvas.requestPointerLock();else accuse()});
+canvas.addEventListener('click',()=>{if(touchMode||!playing)return;if(document.pointerLockElement!==canvas)requestGamePointerLock();else accuse()});
+canvas.addEventListener('contextmenu',event=>{event.preventDefault();if(!touchMode&&playing&&!paused&&hovered)cycleSubjectMark(hovered)});
 canvas.addEventListener('pointerdown',beginTouchPointer);
 canvas.addEventListener('pointermove',moveTouchPointer);
 canvas.addEventListener('pointerup',endTouchPointer);
 canvas.addEventListener('pointercancel',cancelTouchPointers);
 document.querySelector('#camera-reset')!.addEventListener('click',()=>{if(playing)resetMobileCamera()});
 document.querySelector('#mobile-accuse')!.addEventListener('click',()=>accuse(selectedSubject));
+questionButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='?'?null:'?')});
+alertButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='!'?null:'!')});
+document.querySelector('#resume-button')!.addEventListener('click',()=>setPaused(false));
+document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
-addEventListener('keydown',e=>keys.add(e.code));addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('keydown',e=>{if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
+document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas){pointerLockAcquired=true;return}if(playing&&!paused&&pointerLockAcquired){pointerLockAcquired=false;setPaused(true)}});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.fov=touchMode&&innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 
 const clock=new THREE.Clock(); let proximityTimer=0;
-function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(playing){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();subjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode)applyMobileCamera();else updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
+function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(playing&&!paused){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();subjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode)applyMobileCamera();else updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
 frame();

@@ -12,7 +12,10 @@
       <div class="noise"></div>
       <header class="hud top-hud">
         <div class="brand"><b>THE ODD ONE</b><span>OBSERVATION TEST // 01</span></div>
-        <div class="status"><span class="live-dot"></span><span id="timer">00:00</span></div>
+        <div class="top-actions">
+          <button id="sound-toggle" class="sound-toggle" aria-pressed="true" aria-label="Turn sound off">SOUND ON</button>
+          <div class="status"><span class="live-dot"></span><span id="timer">00:00</span></div>
+        </div>
       </header>
       <aside class="hud attempts-panel">
         <span>ACCUSATIONS</span>
@@ -24,12 +27,16 @@
       <button id="camera-reset" class="mobile-ui camera-reset" aria-label="Reset camera">⌂</button>
       <div id="mobile-hint" class="mobile-ui mobile-hint" aria-live="polite"></div>
       <section id="mobile-selection" class="mobile-ui mobile-selection" aria-live="polite">
-        <div><span>SELECTED SUBJECT</span><b id="mobile-subject">SUBJECT 01</b></div>
+        <div class="subject-info"><span>SELECTED SUBJECT</span><b id="mobile-subject">SUBJECT 01</b></div>
+        <div class="mark-controls" aria-label="Mark selected subject">
+          <button id="mark-question" aria-label="Mark selected subject as uncertain" aria-pressed="false">?</button>
+          <button id="mark-alert" aria-label="Mark selected subject as suspicious" aria-pressed="false">!</button>
+        </div>
         <button id="mobile-accuse">ACCUSE <b>→</b></button>
       </section>
       <div class="controls hud">
         <span><kbd>WASD</kbd> MOVE</span><span><kbd>Q E</kbd> ALTITUDE</span>
-        <span><kbd>SHIFT</kbd> BOOST</span><span><kbd>CLICK</kbd> ACCUSE</span>
+        <span><kbd>SHIFT</kbd> BOOST</span><span><kbd>RMB</kbd> MARK</span><span><kbd>CLICK</kbd> ACCUSE</span>
       </div>
       <section id="start-screen" class="screen open">
         <div class="eyebrow">BEHAVIORAL ANOMALY STUDY</div>
@@ -38,6 +45,14 @@
         <div class="rule-strip"><span>12 SUBJECTS</span><span>5 RULES</span><span>3 CHANCES</span></div>
         <button id="play-button" class="primary">BEGIN OBSERVATION <b>→</b></button>
         <small id="device-note">HEADPHONES RECOMMENDED · DESKTOP & MOBILE</small>
+      </section>
+      <section id="pause-screen" class="screen pause-screen" aria-hidden="true">
+        <div class="eyebrow">OBSERVATION SUSPENDED</div>
+        <h2>PAUSED.</h2>
+        <p>The subjects and event clock are frozen.</p>
+        <button id="resume-button" class="primary">RESUME OBSERVATION <b>→</b></button>
+        <button id="pause-sound-toggle" class="pause-sound-toggle" aria-pressed="true">SOUND ON</button>
+        <small>PRESS ESC TO RESUME</small>
       </section>
       <section id="end-screen" class="screen result-screen">
         <div id="result-kicker" class="eyebrow"></div>
