@@ -3,7 +3,7 @@ import './style.css';
 
 type RuleId = 'redJump' | 'hatWave' | 'centerSpin' | 'bellJump' | 'greetingWave';
 type ActionName = 'jump' | 'wave' | 'spin';
-type SubjectMark = '?' | '!' | null;
+type SubjectMark = '?' | '✓' | null;
 
 interface RuleDefinition { id: RuleId; label: string; action: ActionName; }
 interface ActivePointer { x: number; y: number; startX: number; startY: number; }
@@ -112,7 +112,7 @@ const subjects: Subject[] = [];
 const pickables: THREE.Object3D[] = [];
 const markerTexture = makeMarkerTexture();
 const questionTexture = makeSymbolTexture('?', '#74b9e8');
-const alertTexture = makeSymbolTexture('!', '#e65b47');
+const clearTexture = makeSymbolTexture('✓', '#52c6a5');
 
 function mat(color: number) { return new THREE.MeshStandardMaterial({ color, roughness: .85 }); }
 function mesh(geometry: THREE.BufferGeometry, material: THREE.Material, parent: THREE.Object3D, y = 0) {
@@ -129,7 +129,12 @@ function makeMarkerTexture() {
 function makeSymbolTexture(symbol:string,color:string) {
   const c=document.createElement('canvas');c.width=128;c.height=128;
   const ctx=c.getContext('2d')!;ctx.fillStyle='rgba(17,17,15,.92)';ctx.beginPath();ctx.arc(64,64,58,0,Math.PI*2);ctx.fill();
-  ctx.lineWidth=7;ctx.strokeStyle=color;ctx.stroke();ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 82px Space Grotesk';ctx.fillText(symbol,64,66);
+  ctx.lineWidth=7;ctx.strokeStyle=color;ctx.stroke();
+  if(symbol==='✓') {
+    ctx.lineWidth=12;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(34,66);ctx.lineTo(54,84);ctx.lineTo(94,42);ctx.stroke();
+  } else {
+    ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 82px Space Grotesk';ctx.fillText(symbol,64,66);
+  }
   const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;return texture;
 }
 
@@ -193,7 +198,7 @@ const mobileHint = document.querySelector<HTMLElement>('#mobile-hint')!;
 const mobileSelection = document.querySelector<HTMLElement>('#mobile-selection')!;
 const mobileSubjectLabel = document.querySelector<HTMLElement>('#mobile-subject')!;
 const questionButton = document.querySelector<HTMLButtonElement>('#mark-question')!;
-const alertButton = document.querySelector<HTMLButtonElement>('#mark-alert')!;
+const clearButton = document.querySelector<HTMLButtonElement>('#mark-clear')!;
 
 function resetMobileCamera() {
   mobileTarget.set(0,1.8,0);
@@ -233,21 +238,21 @@ function selectSubject(subject:Subject|null) {
 
 function updateMarkButtons() {
   questionButton.classList.toggle('active',selectedSubject?.mark==='?');
-  alertButton.classList.toggle('active',selectedSubject?.mark==='!');
+  clearButton.classList.toggle('active',selectedSubject?.mark==='✓');
   questionButton.setAttribute('aria-pressed',String(selectedSubject?.mark==='?'));
-  alertButton.setAttribute('aria-pressed',String(selectedSubject?.mark==='!'));
+  clearButton.setAttribute('aria-pressed',String(selectedSubject?.mark==='✓'));
 }
 
 function setSubjectMark(subject:Subject,mark:SubjectMark) {
   subject.mark=mark;
-  if(mark)subject.markSprite.material.map=mark==='?'?questionTexture:alertTexture;
+  if(mark)subject.markSprite.material.map=mark==='?'?questionTexture:clearTexture;
   subject.markSprite.material.opacity=mark?1:0;
   subject.markSprite.material.needsUpdate=true;
   updateMarkButtons();
 }
 
 function cycleSubjectMark(subject:Subject) {
-  setSubjectMark(subject,subject.mark===null?'?':subject.mark==='?'?'!':null);
+  setSubjectMark(subject,subject.mark===null?'?':subject.mark==='?'?'✓':null);
 }
 
 function randomWaypoint(out: THREE.Vector3) {
@@ -500,7 +505,7 @@ canvas.addEventListener('pointercancel',cancelTouchPointers);
 document.querySelector('#camera-reset')!.addEventListener('click',()=>{if(playing)resetMobileCamera()});
 document.querySelector('#mobile-accuse')!.addEventListener('click',()=>accuse(selectedSubject));
 questionButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='?'?null:'?')});
-alertButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='!'?null:'!')});
+clearButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='✓'?null:'✓')});
 document.querySelector('#resume-button')!.addEventListener('click',()=>setPaused(false));
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
