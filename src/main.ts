@@ -4,6 +4,7 @@ import './style.css';
 type RuleId = 'redJump' | 'hatWave' | 'centerSpin' | 'bellJump' | 'greetingWave';
 type ActionName = 'jump' | 'wave' | 'spin';
 type SubjectMark = '?' | '✓' | null;
+type ControlsOrigin = 'start' | 'pause';
 
 interface RuleDefinition { id: RuleId; label: string; action: ActionName; }
 interface ActivePointer { x: number; y: number; startX: number; startY: number; }
@@ -178,6 +179,8 @@ let paused = false;
 let soundEnabled = true;
 let pointerLockAcquired = false;
 let suppressAccusationUntil = 0;
+let controlsOrigin: ControlsOrigin = 'start';
+let controlsAcknowledged = readControlsAcknowledged();
 let roundTime = 0;
 let bellTimer = 8;
 let yaw = 0;
@@ -202,6 +205,38 @@ const mobileSubjectLabel = document.querySelector<HTMLElement>('#mobile-subject'
 const questionButton = document.querySelector<HTMLButtonElement>('#mark-question')!;
 const clearButton = document.querySelector<HTMLButtonElement>('#mark-clear')!;
 const followButton = document.querySelector<HTMLButtonElement>('#mobile-follow')!;
+const controlsScreen = document.querySelector<HTMLElement>('#controls-screen')!;
+const controlsCloseButton = document.querySelector<HTMLButtonElement>('#controls-close-button')!;
+
+function readControlsAcknowledged() {
+  try { return localStorage.getItem('the-odd-one-controls-v1')==='seen'; }
+  catch { return false; }
+}
+
+function rememberControlsAcknowledged() {
+  controlsAcknowledged=true;
+  try { localStorage.setItem('the-odd-one-controls-v1','seen'); }
+  catch { /* The guide still works when storage is unavailable. */ }
+}
+
+function openControls(origin:ControlsOrigin) {
+  controlsOrigin=origin;
+  controlsCloseButton.innerHTML=origin==='start'?'START OBSERVATION <b>→</b>':'BACK TO PAUSE <b>←</b>';
+  controlsScreen.classList.add('open');
+  controlsScreen.setAttribute('aria-hidden','false');
+  controlsCloseButton.focus();
+}
+
+function closeControls() {
+  controlsScreen.classList.remove('open');
+  controlsScreen.setAttribute('aria-hidden','true');
+  if(controlsOrigin==='start'){rememberControlsAcknowledged();startRound();}
+}
+
+function requestStartRound() {
+  if(controlsAcknowledged)startRound();
+  else openControls('start');
+}
 
 function subjectFocus(subject:Subject) {
   return subject.root.position.clone().add(new THREE.Vector3(0,2.3,0));
@@ -545,7 +580,7 @@ function requestGamePointerLock() {
 function startRound(){configureRound();playing=true;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
 function endRound(success:boolean){playing=false;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.remove('round-active','paused');document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
 
-document.querySelector('#play-button')!.addEventListener('click',startRound);
+document.querySelector('#play-button')!.addEventListener('click',requestStartRound);
 document.querySelector('#replay-button')!.addEventListener('click',startRound);
 canvas.addEventListener('click',event=>{if(event.button!==0||performance.now()<suppressAccusationUntil||touchMode||!playing)return;if(document.pointerLockElement!==canvas)requestGamePointerLock();else accuse()});
 canvas.addEventListener('contextmenu',event=>event.preventDefault());
@@ -560,9 +595,11 @@ questionButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(s
 clearButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='✓'?null:'✓')});
 followButton.addEventListener('click',()=>toggleFollow(selectedSubject));
 document.querySelector('#resume-button')!.addEventListener('click',()=>setPaused(false));
+document.querySelector('#view-controls-button')!.addEventListener('click',()=>openControls('pause'));
+controlsCloseButton.addEventListener('click',closeControls);
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi+e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
-addEventListener('keydown',e=>{if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
 document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas){pointerLockAcquired=true;return}if(playing&&!paused&&pointerLockAcquired){pointerLockAcquired=false;setPaused(true)}});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.fov=touchMode&&innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 

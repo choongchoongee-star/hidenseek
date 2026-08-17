@@ -52,8 +52,66 @@
         <h2>PAUSED.</h2>
         <p>The subjects and event clock are frozen.</p>
         <button id="resume-button" class="primary">RESUME OBSERVATION <b>→</b></button>
+        <button id="view-controls-button" class="secondary">VIEW CONTROLS</button>
         <button id="pause-sound-toggle" class="pause-sound-toggle" aria-pressed="true">SOUND ON</button>
         <small>PRESS ESC TO RESUME</small>
+      </section>
+      <section id="controls-screen" class="screen controls-screen" aria-hidden="true">
+        <div class="controls-dialog">
+          <div class="controls-heading">
+            <div class="eyebrow">FIELD OPERATOR HANDBOOK</div>
+            <h2>HOW TO OBSERVE</h2>
+            <p>Watch first. Mark your theory. Accuse only when you are ready.</p>
+          </div>
+          <div class="desktop-guide" aria-label="Desktop controls">
+            <div class="guide-card move-guide">
+              <span class="guide-title">MOVE</span>
+              <div class="wasd-map">
+                <kbd>W</kbd>
+                <span></span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+              </div>
+              <p>Fly across the observation field</p>
+            </div>
+            <div class="guide-card">
+              <span class="guide-title">ALTITUDE</span>
+              <div class="key-line"><kbd>Q</kbd><b>↓</b><kbd>E</kbd><b>↑</b></div>
+              <p>Descend / ascend</p>
+            </div>
+            <div class="guide-card">
+              <span class="guide-title">SPEED</span>
+              <div class="key-line"><kbd class="wide-key">SHIFT</kbd></div>
+              <p>Hold to boost movement</p>
+            </div>
+            <div class="guide-card">
+              <span class="guide-title">FOLLOW</span>
+              <div class="key-line"><kbd>F</kbd></div>
+              <p>Track / release aimed subject</p>
+            </div>
+            <div class="guide-card">
+              <span class="guide-title">PAUSE</span>
+              <div class="key-line"><kbd class="wide-key">ESC</kbd></div>
+              <p>Pause observation</p>
+            </div>
+            <div class="guide-card mouse-guide">
+              <span class="guide-title">MOUSE</span>
+              <div class="mouse-map"><i>LMB</i><i>RMB</i><span></span></div>
+              <div class="mouse-labels"><b>ACCUSE</b><b>MARK ? / ✓</b></div>
+              <p>Move mouse to look around</p>
+            </div>
+          </div>
+          <div class="mobile-guide" aria-label="Mobile controls">
+            <div class="gesture-card"><b>☝</b><span>ONE FINGER</span><p>Drag to orbit the camera</p></div>
+            <div class="gesture-card"><b>✌</b><span>TWO FINGERS</span><p>Drag to move the view</p></div>
+            <div class="gesture-card"><b>↔</b><span>PINCH</span><p>Zoom in and out</p></div>
+            <div class="gesture-card"><b>◎</b><span>TAP SUBJECT</span><p>Select an NPC</p></div>
+            <div class="gesture-card"><b>? ✓</b><span>WATCH / CLEAR</span><p>Record your theory</p></div>
+            <div class="gesture-card"><b>◉</b><span>FOLLOW</span><p>Track the selected NPC</p></div>
+            <div class="gesture-card"><b>→</b><span>ACCUSE</span><p>Commit your accusation</p></div>
+            <div class="gesture-card"><b>⌂</b><span>RESET</span><p>Release follow and see all</p></div>
+          </div>
+          <button id="controls-close-button" class="primary">START OBSERVATION <b>→</b></button>
+          <small class="controls-footnote">YOU CAN REOPEN THIS GUIDE FROM THE PAUSE SCREEN</small>
+        </div>
       </section>
       <section id="end-screen" class="screen result-screen">
         <div id="result-kicker" class="eyebrow"></div>
