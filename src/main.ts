@@ -330,6 +330,12 @@ function toggleFollow(subject:Subject|null) {
   else if(subject)setFollowSubject(followedSubject===subject?null:subject);
 }
 
+function adjustDesktopZoom(direction:number) {
+  if(touchMode||!playing||paused)return;
+  camera.fov=THREE.MathUtils.clamp(camera.fov+direction*4,32,75);
+  camera.updateProjectionMatrix();
+}
+
 function setSubjectMark(subject:Subject,mark:SubjectMark) {
   subject.mark=mark;
   if(mark)subject.markSprite.material.map=mark==='?'?questionTexture:clearTexture;
@@ -580,7 +586,7 @@ function requestGamePointerLock() {
   } catch { /* Pointer Lock can be unavailable in embedded browser previews. */ }
 }
 
-function startRound(){configureRound();playing=true;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
+function startRound(){configureRound();playing=true;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.fov=62;camera.updateProjectionMatrix();camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
 function endRound(success:boolean){playing=false;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.remove('round-active','paused');document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
 
 document.querySelector('#play-button')!.addEventListener('click',requestStartRound);
@@ -602,9 +608,10 @@ document.querySelector('#view-controls-button')!.addEventListener('click',()=>op
 controlsCloseButton.addEventListener('click',closeControls);
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
-addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault();adjustDesktopZoom(Math.sign(e.deltaY))}},{passive:false});
 document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas){pointerLockAcquired=true;return}if(playing&&!paused&&pointerLockAcquired){pointerLockAcquired=false;setPaused(true)}});
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.fov=touchMode&&innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode)camera.fov=innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 
 const clock=new THREE.Clock(); let proximityTimer=0;
 function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(playing&&!paused){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();subjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode)applyMobileCamera();else updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
