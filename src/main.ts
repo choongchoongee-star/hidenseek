@@ -589,6 +589,18 @@ function requestGamePointerLock() {
 function startRound(){configureRound();playing=true;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.fov=62;camera.updateProjectionMatrix();camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
 function endRound(success:boolean){playing=false;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.remove('round-active','paused');document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
 
+function returnToStartScreen(){
+  playing=false;paused=false;pointerLockAcquired=false;keys.clear();cancelTouchPointers();setFollowSubject(null,false);selectSubject(null);
+  mobileHint.textContent='';mobileHint.classList.remove('show');subjects.forEach(subject=>subject.marker.material.opacity=0);
+  document.querySelector('#crosshair')!.classList.remove('locked');const targetLabel=document.querySelector<HTMLElement>('#target-label')!;targetLabel.textContent='';targetLabel.classList.remove('show');
+  document.body.classList.remove('round-active','paused','selection-active');
+  document.querySelector('#pause-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.setAttribute('aria-hidden','true');
+  document.querySelector('#end-screen')!.classList.remove('open');controlsScreen.classList.remove('open');controlsScreen.setAttribute('aria-hidden','true');
+  document.querySelector('#start-screen')!.classList.add('open');
+  clearTimeout(toastTimeout);document.querySelector('#toast')!.className='toast';
+  if(document.pointerLockElement===canvas)document.exitPointerLock();
+}
+
 document.querySelector('#play-button')!.addEventListener('click',requestStartRound);
 document.querySelector('#replay-button')!.addEventListener('click',startRound);
 canvas.addEventListener('click',event=>{if(event.button!==0||performance.now()<suppressAccusationUntil||touchMode||!playing)return;if(document.pointerLockElement!==canvas)requestGamePointerLock();else accuse()});
@@ -605,6 +617,7 @@ clearButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(sele
 followButton.addEventListener('click',()=>toggleFollow(selectedSubject));
 document.querySelector('#resume-button')!.addEventListener('click',()=>setPaused(false));
 document.querySelector('#view-controls-button')!.addEventListener('click',()=>openControls('pause'));
+document.querySelector('#end-observation-button')!.addEventListener('click',returnToStartScreen);
 controlsCloseButton.addEventListener('click',closeControls);
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
