@@ -42,8 +42,16 @@
       <section id="start-screen" class="screen open">
         <div class="eyebrow">BEHAVIORAL ANOMALY STUDY</div>
         <h1>FIND THE<br/><em>ODD ONE.</em></h1>
-        <p>Eleven subjects follow one hidden rule.<br/>One subject does the opposite.</p>
-        <div class="rule-strip"><span>12 SUBJECTS</span><span>5 RULES</span><span>3 CHANCES</span></div>
+        <p><span id="majority-copy">Five subjects follow one hidden rule.</span><br/>One subject does the opposite.</p>
+        <div class="participant-selector" role="radiogroup" aria-label="Number of participating subjects">
+          <span>CHOOSE SUBJECT COUNT</span>
+          <div>
+            <button class="active" data-participant-count="6" role="radio" aria-checked="true">6 <small>EASY</small></button>
+            <button data-participant-count="9" role="radio" aria-checked="false">9 <small>MEDIUM</small></button>
+            <button data-participant-count="12" role="radio" aria-checked="false">12 <small>HARD</small></button>
+          </div>
+        </div>
+        <div class="rule-strip"><span id="subject-count-summary">6 SUBJECTS</span><span>4 TARGET RULES</span><span>3 CHANCES</span></div>
         <button id="play-button" class="primary">BEGIN OBSERVATION <b>→</b></button>
         <small id="device-note">HEADPHONES RECOMMENDED · DESKTOP & MOBILE</small>
       </section>

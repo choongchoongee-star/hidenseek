@@ -35,6 +35,8 @@ const RULES: RuleDefinition[] = [
   { id: 'bellJump', label: 'BELL JUMP', action: 'jump' },
   { id: 'greetingWave', label: 'GREETING WAVE', action: 'wave' },
 ];
+const TARGET_RULES = RULES.filter(rule=>rule.id!=='bellJump');
+const PARTICIPANT_OPTIONS = [6,9,12] as const;
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const touchMode = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).has('touch');
@@ -174,7 +176,10 @@ function makeSubject(id: number): Subject {
 }
 for(let i=0;i<12;i++) subjects.push(makeSubject(i));
 
-let targetRule = RULES[0];
+let targetRule = TARGET_RULES[0];
+let participantCount:typeof PARTICIPANT_OPTIONS[number]=6;
+let activeSubjects:Subject[]=[];
+let activeSubjectIds=new Set<number>();
 let oddId = 0;
 let attempts = 3;
 let playing = false;
@@ -210,6 +215,9 @@ const clearButton = document.querySelector<HTMLButtonElement>('#mark-clear')!;
 const followButton = document.querySelector<HTMLButtonElement>('#mobile-follow')!;
 const controlsScreen = document.querySelector<HTMLElement>('#controls-screen')!;
 const controlsCloseButton = document.querySelector<HTMLButtonElement>('#controls-close-button')!;
+const participantButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-participant-count]')];
+const majorityCopy=document.querySelector<HTMLElement>('#majority-copy')!;
+const subjectCountSummary=document.querySelector<HTMLElement>('#subject-count-summary')!;
 
 function readControlsAcknowledged() {
   try { return localStorage.getItem('the-odd-one-controls-v1')==='seen'; }
@@ -348,35 +356,68 @@ function cycleSubjectMark(subject:Subject) {
   setSubjectMark(subject,subject.mark===null?'?':subject.mark==='?'?'✓':null);
 }
 
+function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
+  participantCount=count;
+  majorityCopy.textContent=`${count-1} subjects follow one hidden rule.`;
+  subjectCountSummary.textContent=`${count} SUBJECTS`;
+  participantButtons.forEach(button=>{
+    const active=Number(button.dataset.participantCount)===count;
+    button.classList.toggle('active',active);button.setAttribute('aria-checked',String(active));
+  });
+}
+
 function randomWaypoint(out: THREE.Vector3) {
   out.set(THREE.MathUtils.randFloat(-24,24),0,THREE.MathUtils.randFloat(-24,24));
   if(Math.abs(out.x)<6.5 && Math.abs(out.z)<6.5 && Math.random()<.45) out.multiplyScalar(1.8);
 }
 
+function chooseParticipants(count:number,rule:RuleDefinition) {
+  const stimulusPool=rule.id==='redJump'?subjects.filter(subject=>subject.red):rule.id==='hatWave'?subjects.filter(subject=>subject.hat):[];
+  const required=shuffle(stimulusPool).slice(0,Math.min(2,stimulusPool.length));
+  const remaining=shuffle(subjects.filter(subject=>!required.includes(subject))).slice(0,count-required.length);
+  return shuffle([...required,...remaining]);
+}
+
+function noiseCountsFor(count:number) {
+  if(count===6)return [2,3,3,4];
+  if(count===9)return [3,4,5,6];
+  return [5,6,6,7];
+}
+
 function configureRound() {
-  targetRule = RULES[Math.floor(Math.random()*RULES.length)];
-  oddId = Math.floor(Math.random()*subjects.length);
-  const balancedCounts = shuffle([5,6,6,7]);
-  let noiseIndex=0;
-  for(const rule of RULES) {
-    if(rule.id===targetRule.id) {
-      subjects.forEach(s=>s.obeys[rule.id]=s.id!==oddId);
-    } else {
-      const desired=balancedCounts[noiseIndex++];
-      // Odd obeys exactly two noise rules, preventing it from becoming globally unusual.
-      const oddObeys = noiseIndex % 2 === 0;
-      const others=shuffle(subjects.filter(s=>s.id!==oddId));
-      subjects.forEach(s=>s.obeys[rule.id]=false);
-      subjects[oddId].obeys[rule.id]=oddObeys;
-      others.slice(0,desired-(oddObeys?1:0)).forEach(s=>s.obeys[rule.id]=true);
-    }
-  }
-  subjects.forEach((s,i)=>{
-    s.root.position.set((i%4-1.5)*6.5,0,(Math.floor(i/4)-1)*8);
+  targetRule=TARGET_RULES[Math.floor(Math.random()*TARGET_RULES.length)];
+  activeSubjects=chooseParticipants(participantCount,targetRule);activeSubjectIds=new Set(activeSubjects.map(subject=>subject.id));
+  oddId=activeSubjects[Math.floor(Math.random()*activeSubjects.length)].id;
+  subjects.forEach(subject=>{subject.root.visible=activeSubjectIds.has(subject.id);for(const rule of RULES)subject.obeys[rule.id]=false;});
+  activeSubjects.forEach(subject=>subject.obeys[targetRule.id]=subject.id!==oddId);
+  const noiseRules=shuffle(RULES.filter(rule=>rule.id!==targetRule.id));
+  const balancedCounts=shuffle(noiseCountsFor(participantCount));
+  const oddNoisePattern=shuffle([true,true,false,false]);
+  noiseRules.forEach((rule,index)=>{
+    const desired=balancedCounts[index];const oddObeys=oddNoisePattern[index];
+    const others=shuffle(activeSubjects.filter(subject=>subject.id!==oddId));
+    subjects[oddId].obeys[rule.id]=oddObeys;
+    others.slice(0,desired-(oddObeys?1:0)).forEach(subject=>subject.obeys[rule.id]=true);
+  });
+  const columns=participantCount===12?4:3;const rows=Math.ceil(participantCount/columns);
+  subjects.forEach(s=>{
     randomWaypoint(s.waypoint); s.action=null; s.actionTime=0; s.body.position.y=0; s.body.rotation.set(0,0,0); s.marker.material.opacity=0;s.marker.material.color.set(0xffffff);setSubjectMark(s,null);
     Object.keys(s.cooldowns).forEach(k=>s.cooldowns[k as RuleId]=0); s.lastCenterInside=false;
   });
+  activeSubjects.forEach((subject,index)=>subject.root.position.set((index%columns-(columns-1)/2)*7,0,(Math.floor(index/columns)-(rows-1)/2)*8));
+  validateRoundConfiguration();
   attempts=3; roundTime=0; bellTimer=THREE.MathUtils.randFloat(7,10); updateAttempts();
+}
+
+function validateRoundConfiguration() {
+  if(targetRule.id==='bellJump')throw new Error('Bell jump cannot be the target rule.');
+  for(const rule of RULES) {
+    const obeyCount=activeSubjects.filter(subject=>subject.obeys[rule.id]).length;
+    if(rule.id===targetRule.id&&obeyCount!==participantCount-1)throw new Error('Target rule must be N-1:1.');
+    if(rule.id!==targetRule.id&&(obeyCount<2||obeyCount>participantCount-2))throw new Error('Noise rules require at least two obeying and two non-obeying subjects.');
+  }
+  const oddSubject=subjects[oddId];
+  if(RULES.filter(rule=>rule.id!==targetRule.id&&oddSubject.obeys[rule.id]).length!==2)throw new Error('Odd subject must obey exactly two noise rules.');
 }
 
 function shuffle<T>(items:T[]) { return [...items].sort(()=>Math.random()-.5); }
@@ -389,7 +430,11 @@ function trigger(subject:Subject, ruleId:RuleId) {
 
 function ringBell() {
   bellTimer=THREE.MathUtils.randFloat(10,14);
-  subjects.forEach(s=>trigger(s,'bellJump'));
+  activeSubjects.forEach(subject=>{
+    if(!subject.obeys.bellJump)return;
+    subject.cooldowns.bellJump=3.5;subject.action='jump';subject.actionTime=0;
+    subject.body.position.y=0;subject.body.rotation.y=0;subject.rightArm.rotation.z=0;
+  });
   bell.scale.set(1.3,.8,1.3); playBellSound(); showToast('BELL EVENT',false,900);
 }
 
@@ -424,8 +469,8 @@ function animateAction(s:Subject,dt:number) {
 }
 
 function processProximityRules() {
-  for(let i=0;i<subjects.length;i++) for(let j=i+1;j<subjects.length;j++) {
-    const a=subjects[i],b=subjects[j]; const d=a.root.position.distanceToSquared(b.root.position);
+  for(let i=0;i<activeSubjects.length;i++) for(let j=i+1;j<activeSubjects.length;j++) {
+    const a=activeSubjects[i],b=activeSubjects[j]; const d=a.root.position.distanceToSquared(b.root.position);
     if(d<7.8) {
       if(b.red) trigger(a,'redJump'); if(a.red) trigger(b,'redJump');
       if(b.hat) trigger(a,'hatWave'); if(a.hat) trigger(b,'hatWave');
@@ -445,10 +490,10 @@ function pickSubjectAt(clientX:number,clientY:number) {
   const rect=canvas.getBoundingClientRect();
   const pointer=new THREE.Vector2((clientX-rect.left)/rect.width*2-1,-((clientY-rect.top)/rect.height)*2+1);
   raycaster.setFromCamera(pointer,camera);
-  const hit=raycaster.intersectObjects(pickables,false)[0];
+  const hit=raycaster.intersectObjects(pickables,false).find(result=>activeSubjectIds.has(result.object.userData.subjectId as number));
   if(hit&&hit.distance<70) return subjects[hit.object.userData.subjectId as number];
   let nearest:Subject|null=null; let nearestDistance=38*38;
-  for(const subject of subjects) {
+  for(const subject of activeSubjects) {
     const projected=subject.root.position.clone().add(new THREE.Vector3(0,2.7,0)).project(camera);
     if(projected.z<-1||projected.z>1)continue;
     const screenX=rect.left+(projected.x+1)*rect.width/2;
@@ -538,13 +583,13 @@ function updateCamera(dt:number) {
 
 function updateTargeting() {
   if(touchMode) {
-    subjects.forEach(s=>s.marker.material.opacity=selectedSubject===s?1:0);
+    activeSubjects.forEach(s=>s.marker.material.opacity=selectedSubject===s?1:0);
     return;
   }
   raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
-  const hit=raycaster.intersectObjects(pickables,false)[0];
+  const hit=raycaster.intersectObjects(pickables,false).find(result=>activeSubjectIds.has(result.object.userData.subjectId as number));
   hovered=hit && hit.distance<45 ? subjects[hit.object.userData.subjectId as number] : null;
-  subjects.forEach(s=>s.marker.material.opacity=hovered===s?1:0);
+  activeSubjects.forEach(s=>s.marker.material.opacity=hovered===s?1:0);
   document.querySelector('#crosshair')!.classList.toggle('locked',!!hovered);
   const label=document.querySelector('#target-label')!; label.textContent=hovered?`SUBJECT ${String(hovered.id+1).padStart(2,'0')}`:''; label.classList.toggle('show',!!hovered);
 }
@@ -603,6 +648,10 @@ function returnToStartScreen(){
 
 document.querySelector('#play-button')!.addEventListener('click',requestStartRound);
 document.querySelector('#replay-button')!.addEventListener('click',startRound);
+participantButtons.forEach(button=>button.addEventListener('click',()=>{
+  const count=Number(button.dataset.participantCount);
+  if(count===6||count===9||count===12)setParticipantCount(count);
+}));
 canvas.addEventListener('click',event=>{if(event.button!==0||performance.now()<suppressAccusationUntil||touchMode||!playing)return;if(document.pointerLockElement!==canvas)requestGamePointerLock();else accuse()});
 canvas.addEventListener('contextmenu',event=>event.preventDefault());
 canvas.addEventListener('pointerdown',event=>{if(!touchMode&&event.button===2){event.preventDefault();suppressAccusationUntil=performance.now()+400;if(playing&&!paused&&hovered)cycleSubjectMark(hovered)}});
@@ -626,6 +675,7 @@ addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault()
 document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas){pointerLockAcquired=true;return}if(playing&&!paused&&pointerLockAcquired){pointerLockAcquired=false;setPaused(true)}});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode)camera.fov=innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 
+setParticipantCount(participantCount);
 const clock=new THREE.Clock(); let proximityTimer=0;
-function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(playing&&!paused){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();subjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode)applyMobileCamera();else updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
+function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(playing&&!paused){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode)applyMobileCamera();else updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
 frame();
