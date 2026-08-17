@@ -21,6 +21,21 @@
         <span>ACCUSATIONS</span>
         <div id="attempts" class="attempts" aria-label="3 attempts remaining"></div>
       </aside>
+      <button id="rule-notes-toggle" class="hud rule-notes-toggle" aria-controls="rule-notes" aria-expanded="false">MISSION NOTES <b>5</b></button>
+      <aside id="rule-notes" class="hud rule-notes open" aria-label="Mission rule checklist" aria-hidden="true">
+        <header>
+          <div><span>MISSION NOTES</span><b>RULE CHECKLIST</b></div>
+          <button id="rule-notes-close" aria-label="Hide mission notes">×</button>
+        </header>
+        <div class="rule-note-list">
+          <button class="rule-note" data-rule-note="redJump"><span class="note-index">1</span><i class="note-mark"></i><span class="note-copy"><b>RED JUMP</b><small>Near a red shirt → JUMP</small></span></button>
+          <button class="rule-note" data-rule-note="hatWave"><span class="note-index">2</span><i class="note-mark"></i><span class="note-copy"><b>HAT WAVE</b><small>Near a hat → WAVE</small></span></button>
+          <button class="rule-note" data-rule-note="centerSpin"><span class="note-index">3</span><i class="note-mark"></i><span class="note-copy"><b>CENTER SPIN</b><small>Enter the center → SPIN</small></span></button>
+          <button class="rule-note" data-rule-note="greetingWave"><span class="note-index">4</span><i class="note-mark"></i><span class="note-copy"><b>GREETING WAVE</b><small>Face each other → both WAVE</small></span></button>
+          <button class="rule-note bell-note" data-rule-note="bellJump"><span class="note-index">5</span><i class="note-mark"></i><span class="note-copy"><b>BELL EVENT</b><small>Fixed subjects JUMP · NOT A TARGET</small></span></button>
+        </div>
+        <footer><span class="desktop-note-help">N: HIDE · 1–5: ? → ✓ → STRIKE</span><span class="mobile-note-help">TAP: ? → ✓ → STRIKE → CLEAR</span></footer>
+      </aside>
       <div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i><span></span></div>
       <div id="target-label" class="target-label"></div>
       <div id="toast" class="toast"></div>

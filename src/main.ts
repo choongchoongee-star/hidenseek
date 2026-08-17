@@ -4,6 +4,7 @@ import './style.css';
 type RuleId = 'redJump' | 'hatWave' | 'centerSpin' | 'bellJump' | 'greetingWave';
 type ActionName = 'jump' | 'wave' | 'spin';
 type SubjectMark = '?' | '✓' | null;
+type RuleNoteMark = '?' | '✓' | 'strike' | null;
 type ControlsOrigin = 'start' | 'pause';
 
 interface RuleDefinition { id: RuleId; label: string; action: ActionName; }
@@ -37,6 +38,9 @@ const RULES: RuleDefinition[] = [
 ];
 const TARGET_RULES = RULES.filter(rule=>rule.id!=='bellJump');
 const PARTICIPANT_OPTIONS = [6,9,12] as const;
+const RULE_NOTE_ORDER:RuleId[]=['redJump','hatWave','centerSpin','greetingWave','bellJump'];
+const ruleNoteMarks={} as Record<RuleId,RuleNoteMark>;
+RULES.forEach(rule=>ruleNoteMarks[rule.id]=null);
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const touchMode = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).has('touch');
@@ -218,6 +222,9 @@ const controlsCloseButton = document.querySelector<HTMLButtonElement>('#controls
 const participantButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-participant-count]')];
 const majorityCopy=document.querySelector<HTMLElement>('#majority-copy')!;
 const subjectCountSummary=document.querySelector<HTMLElement>('#subject-count-summary')!;
+const ruleNotes=document.querySelector<HTMLElement>('#rule-notes')!;
+const ruleNotesToggle=document.querySelector<HTMLButtonElement>('#rule-notes-toggle')!;
+const ruleNoteRows=[...document.querySelectorAll<HTMLButtonElement>('[data-rule-note]')];
 
 function readControlsAcknowledged() {
   try { return localStorage.getItem('the-odd-one-controls-v1')==='seen'; }
@@ -366,6 +373,26 @@ function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
   });
 }
 
+function setRuleNotesOpen(value:boolean) {
+  ruleNotes.classList.toggle('open',value);ruleNotes.setAttribute('aria-hidden',String(!value));
+  ruleNotesToggle.classList.toggle('show',!value);ruleNotesToggle.setAttribute('aria-expanded',String(value));
+}
+
+function updateRuleNote(ruleId:RuleId) {
+  const row=ruleNoteRows.find(button=>button.dataset.ruleNote===ruleId);if(!row)return;
+  const mark=ruleNoteMarks[ruleId];row.classList.toggle('mark-question',mark==='?');row.classList.toggle('mark-check',mark==='✓');row.classList.toggle('mark-strike',mark==='strike');
+  const label=row.querySelector('.note-copy b')?.textContent??ruleId;const state=mark==='?'?'questioned':mark==='✓'?'checked':mark==='strike'?'ruled out':'unmarked';
+  row.setAttribute('aria-label',`${label}: ${state}. Cycle checklist mark.`);
+}
+
+function cycleRuleNote(ruleId:RuleId) {
+  const current=ruleNoteMarks[ruleId];ruleNoteMarks[ruleId]=current===null?'?':current==='?'?'✓':current==='✓'?'strike':null;updateRuleNote(ruleId);
+}
+
+function resetRuleNotes() {
+  RULE_NOTE_ORDER.forEach(ruleId=>{ruleNoteMarks[ruleId]=null;updateRuleNote(ruleId);});setRuleNotesOpen(true);
+}
+
 function randomWaypoint(out: THREE.Vector3) {
   out.set(THREE.MathUtils.randFloat(-24,24),0,THREE.MathUtils.randFloat(-24,24));
   if(Math.abs(out.x)<6.5 && Math.abs(out.z)<6.5 && Math.random()<.45) out.multiplyScalar(1.8);
@@ -406,7 +433,7 @@ function configureRound() {
   });
   activeSubjects.forEach((subject,index)=>subject.root.position.set((index%columns-(columns-1)/2)*7,0,(Math.floor(index/columns)-(rows-1)/2)*8));
   validateRoundConfiguration();
-  attempts=3; roundTime=0; bellTimer=THREE.MathUtils.randFloat(7,10); updateAttempts();
+  attempts=3; roundTime=0; bellTimer=THREE.MathUtils.randFloat(7,10); updateAttempts();resetRuleNotes();
 }
 
 function validateRoundConfiguration() {
@@ -632,13 +659,14 @@ function requestGamePointerLock() {
 }
 
 function startRound(){configureRound();playing=true;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.fov=62;camera.updateProjectionMatrix();camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
-function endRound(success:boolean){playing=false;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.remove('round-active','paused');document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
+function endRound(success:boolean){playing=false;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.remove('round-active','paused');setRuleNotesOpen(false);document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
 
 function returnToStartScreen(){
   playing=false;paused=false;pointerLockAcquired=false;keys.clear();cancelTouchPointers();setFollowSubject(null,false);selectSubject(null);
   mobileHint.textContent='';mobileHint.classList.remove('show');subjects.forEach(subject=>subject.marker.material.opacity=0);
   document.querySelector('#crosshair')!.classList.remove('locked');const targetLabel=document.querySelector<HTMLElement>('#target-label')!;targetLabel.textContent='';targetLabel.classList.remove('show');
   document.body.classList.remove('round-active','paused','selection-active');
+  setRuleNotesOpen(false);
   document.querySelector('#pause-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.setAttribute('aria-hidden','true');
   document.querySelector('#end-screen')!.classList.remove('open');controlsScreen.classList.remove('open');controlsScreen.setAttribute('aria-hidden','true');
   document.querySelector('#start-screen')!.classList.add('open');
@@ -652,6 +680,9 @@ participantButtons.forEach(button=>button.addEventListener('click',()=>{
   const count=Number(button.dataset.participantCount);
   if(count===6||count===9||count===12)setParticipantCount(count);
 }));
+ruleNoteRows.forEach(row=>row.addEventListener('click',()=>cycleRuleNote(row.dataset.ruleNote as RuleId)));
+document.querySelector('#rule-notes-close')!.addEventListener('click',()=>setRuleNotesOpen(false));
+ruleNotesToggle.addEventListener('click',()=>setRuleNotesOpen(true));
 canvas.addEventListener('click',event=>{if(event.button!==0||performance.now()<suppressAccusationUntil||touchMode||!playing)return;if(document.pointerLockElement!==canvas)requestGamePointerLock();else accuse()});
 canvas.addEventListener('contextmenu',event=>event.preventDefault());
 canvas.addEventListener('pointerdown',event=>{if(!touchMode&&event.button===2){event.preventDefault();suppressAccusationUntil=performance.now()+400;if(playing&&!paused&&hovered)cycleSubjectMark(hovered)}});
@@ -670,7 +701,7 @@ document.querySelector('#end-observation-button')!.addEventListener('click',retu
 controlsCloseButton.addEventListener('click',closeControls);
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
-addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if(e.code==='KeyN'&&playing&&!paused&&!e.repeat){e.preventDefault();setRuleNotesOpen(!ruleNotes.classList.contains('open'));return}const noteIndex=['Digit1','Digit2','Digit3','Digit4','Digit5'].indexOf(e.code);if(noteIndex>=0&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault();adjustDesktopZoom(Math.sign(e.deltaY))}},{passive:false});
 document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas){pointerLockAcquired=true;return}if(playing&&!paused&&pointerLockAcquired){pointerLockAcquired=false;setPaused(true)}});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode)camera.fov=innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
