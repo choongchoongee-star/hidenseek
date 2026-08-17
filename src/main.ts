@@ -184,11 +184,13 @@ let yaw = 0;
 let pitch = -.28;
 let hovered: Subject | null = null;
 let selectedSubject: Subject | null = null;
+let followedSubject: Subject | null = null;
 const keys = new Set<string>();
 const raycaster = new THREE.Raycaster();
 const activePointers = new Map<number,ActivePointer>();
 const mobileTarget = new THREE.Vector3(0,1.8,0);
 const mobileSpherical = new THREE.Spherical(35,1.06,0);
+const desktopFollowSpherical = new THREE.Spherical(18,1.05,0);
 let previousGestureCenter = new THREE.Vector2();
 let previousGestureDistance = 0;
 let mobileDragged = false;
@@ -199,14 +201,21 @@ const mobileSelection = document.querySelector<HTMLElement>('#mobile-selection')
 const mobileSubjectLabel = document.querySelector<HTMLElement>('#mobile-subject')!;
 const questionButton = document.querySelector<HTMLButtonElement>('#mark-question')!;
 const clearButton = document.querySelector<HTMLButtonElement>('#mark-clear')!;
+const followButton = document.querySelector<HTMLButtonElement>('#mobile-follow')!;
+
+function subjectFocus(subject:Subject) {
+  return subject.root.position.clone().add(new THREE.Vector3(0,2.3,0));
+}
 
 function resetMobileCamera() {
+  setFollowSubject(null,false);
   mobileTarget.set(0,1.8,0);
   mobileSpherical.set(innerHeight > innerWidth ? 39 : 35,1.06,0);
   applyMobileCamera();
 }
 
 function applyMobileCamera() {
+  if(followedSubject)mobileTarget.copy(subjectFocus(followedSubject));
   camera.position.copy(mobileTarget).add(new THREE.Vector3().setFromSpherical(mobileSpherical));
   camera.lookAt(mobileTarget);
 }
@@ -234,6 +243,7 @@ function selectSubject(subject:Subject|null) {
     advanceMobileTutorial('select');
   }
   updateMarkButtons();
+  updateFollowButton();
 }
 
 function updateMarkButtons() {
@@ -241,6 +251,45 @@ function updateMarkButtons() {
   clearButton.classList.toggle('active',selectedSubject?.mark==='✓');
   questionButton.setAttribute('aria-pressed',String(selectedSubject?.mark==='?'));
   clearButton.setAttribute('aria-pressed',String(selectedSubject?.mark==='✓'));
+}
+
+function updateFollowButton() {
+  const active=!!selectedSubject&&followedSubject===selectedSubject;
+  followButton.classList.toggle('active',active);
+  followButton.setAttribute('aria-pressed',String(active));
+  followButton.querySelector('small')!.textContent=active?'RELEASE':'FOLLOW';
+}
+
+function applyDesktopFollowCamera() {
+  if(!followedSubject)return;
+  const target=subjectFocus(followedSubject);
+  camera.position.copy(target).add(new THREE.Vector3().setFromSpherical(desktopFollowSpherical));
+  camera.lookAt(target);
+}
+
+function setFollowSubject(subject:Subject|null,notify=true) {
+  if(subject===followedSubject)return;
+  followedSubject=subject;
+  if(subject) {
+    const target=subjectFocus(subject);
+    if(touchMode)mobileTarget.copy(target);
+    else {
+      desktopFollowSpherical.setFromVector3(camera.position.clone().sub(target));
+      desktopFollowSpherical.radius=THREE.MathUtils.clamp(desktopFollowSpherical.radius,6,45);
+      desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi,.35,1.4);
+      applyDesktopFollowCamera();
+    }
+    if(notify)showToast(`FOLLOWING SUBJECT ${String(subject.id+1).padStart(2,'0')}`,false,1100);
+  } else {
+    if(!touchMode){camera.rotation.order='YXZ';yaw=camera.rotation.y;pitch=camera.rotation.x;}
+    if(notify)showToast('FOLLOW RELEASED',false,900);
+  }
+  updateFollowButton();
+}
+
+function toggleFollow(subject:Subject|null) {
+  if(!subject&&followedSubject)setFollowSubject(null);
+  else if(subject)setFollowSubject(followedSubject===subject?null:subject);
 }
 
 function setSubjectMark(subject:Subject,mark:SubjectMark) {
@@ -402,11 +451,13 @@ function moveTouchPointer(event:PointerEvent) {
     const center=new THREE.Vector2((points[0].x+points[1].x)/2,(points[0].y+points[1].y)/2);
     const distance=Math.max(1,Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y));
     const delta=center.clone().sub(previousGestureCenter);
-    const panScale=mobileSpherical.radius*.0017;
-    const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);right.y=0;right.normalize();
-    const forward=mobileTarget.clone().sub(camera.position);forward.y=0;forward.normalize();
-    mobileTarget.addScaledVector(right,-delta.x*panScale).addScaledVector(forward,delta.y*panScale);
-    mobileTarget.x=THREE.MathUtils.clamp(mobileTarget.x,-22,22);mobileTarget.z=THREE.MathUtils.clamp(mobileTarget.z,-22,22);
+    if(!followedSubject) {
+      const panScale=mobileSpherical.radius*.0017;
+      const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);right.y=0;right.normalize();
+      const forward=mobileTarget.clone().sub(camera.position);forward.y=0;forward.normalize();
+      mobileTarget.addScaledVector(right,-delta.x*panScale).addScaledVector(forward,delta.y*panScale);
+      mobileTarget.x=THREE.MathUtils.clamp(mobileTarget.x,-22,22);mobileTarget.z=THREE.MathUtils.clamp(mobileTarget.z,-22,22);
+    }
     if(previousGestureDistance>0) mobileSpherical.radius=THREE.MathUtils.clamp(mobileSpherical.radius*previousGestureDistance/distance,15,50);
     previousGestureCenter.copy(center);previousGestureDistance=distance;
     applyMobileCamera();
@@ -431,6 +482,7 @@ function cancelTouchPointers(){activePointers.clear();previousGestureDistance=0;
 
 function updateCamera(dt:number) {
   if(document.pointerLockElement!==canvas) return;
+  if(followedSubject){applyDesktopFollowCamera();return;}
   const forward=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); forward.y=0; forward.normalize();
   const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); right.y=0; right.normalize();
   const move=new THREE.Vector3();
@@ -490,8 +542,8 @@ function requestGamePointerLock() {
   } catch { /* Pointer Lock can be unavailable in embedded browser previews. */ }
 }
 
-function startRound(){configureRound();playing=true;paused=false;pointerLockAcquired=false;document.body.classList.add('round-active');document.body.classList.remove('paused');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
-function endRound(success:boolean){playing=false;paused=false;pointerLockAcquired=false;document.body.classList.remove('round-active','paused');document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
+function startRound(){configureRound();playing=true;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
+function endRound(success:boolean){playing=false;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.remove('round-active','paused');document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
 
 document.querySelector('#play-button')!.addEventListener('click',startRound);
 document.querySelector('#replay-button')!.addEventListener('click',startRound);
@@ -506,10 +558,11 @@ document.querySelector('#camera-reset')!.addEventListener('click',()=>{if(playin
 document.querySelector('#mobile-accuse')!.addEventListener('click',()=>accuse(selectedSubject));
 questionButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='?'?null:'?')});
 clearButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='✓'?null:'✓')});
+followButton.addEventListener('click',()=>toggleFollow(selectedSubject));
 document.querySelector('#resume-button')!.addEventListener('click',()=>setPaused(false));
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
-addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
-addEventListener('keydown',e=>{if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi+e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
+addEventListener('keydown',e=>{if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
 document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas){pointerLockAcquired=true;return}if(playing&&!paused&&pointerLockAcquired){pointerLockAcquired=false;setPaused(true)}});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.fov=touchMode&&innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 
