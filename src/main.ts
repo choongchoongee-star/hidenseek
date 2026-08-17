@@ -121,9 +121,12 @@ function mesh(geometry: THREE.BufferGeometry, material: THREE.Material, parent: 
 }
 
 function makeMarkerTexture() {
-  const c = document.createElement('canvas'); c.width = 128; c.height = 64;
-  const ctx = c.getContext('2d')!; ctx.fillStyle='#f4b942'; ctx.beginPath(); ctx.roundRect(2,2,124,60,10); ctx.fill();
-  ctx.fillStyle='#171713'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='700 30px Space Grotesk'; ctx.fillText('SUBJECT',64,32);
+  const c = document.createElement('canvas'); c.width = 256; c.height = 96;
+  const ctx = c.getContext('2d')!; ctx.fillStyle='#f4b942'; ctx.beginPath(); ctx.roundRect(4,4,248,88,14); ctx.fill();
+  ctx.fillStyle='#171713'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  let fontSize=46;
+  do { ctx.font=`700 ${fontSize--}px Space Grotesk`; } while(ctx.measureText('SUBJECT').width>216&&fontSize>30);
+  ctx.fillText('SUBJECT',128,50);
   const texture = new THREE.CanvasTexture(c); texture.colorSpace=THREE.SRGBColorSpace; return texture;
 }
 
@@ -161,7 +164,7 @@ function makeSubject(id: number): Subject {
     const cap=mesh(new THREE.CylinderGeometry(.44,.52,.42,12),mat(id%2?0xd3ac3b:0x454c3f),body,4.67); cap.userData.subjectId=id;
   }
   const marker = new THREE.Sprite(new THREE.SpriteMaterial({map:markerTexture,transparent:true,depthTest:false,opacity:0}));
-  marker.scale.set(2.8,1.4,1); marker.position.y=6.45; root.add(marker);
+  marker.scale.set(3.2,1.2,1); marker.position.y=6.45; root.add(marker);
   const markSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:questionTexture,transparent:true,depthTest:false,opacity:0}));
   markSprite.scale.set(1.45,1.45,1);markSprite.position.y=5.25;root.add(markSprite);
   root.position.set((id%4-1.5)*6.5,0,(Math.floor(id/4)-1)*8);
