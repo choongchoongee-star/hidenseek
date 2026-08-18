@@ -239,6 +239,10 @@ const desktopFollowSpherical = new THREE.Spherical(18,1.05,0);
 let previousGestureCenter = new THREE.Vector2();
 let previousGestureDistance = 0;
 let mobileDragged = false;
+let lastTouchEndTime = 0;
+let lastTouchEndX = Number.NEGATIVE_INFINITY;
+let lastTouchEndY = Number.NEGATIVE_INFINITY;
+let lastTouchEndTarget:EventTarget|null = null;
 let mobileTutorialComplete = false;
 let mobileTutorialStep = 0;
 const mobileHint = document.querySelector<HTMLElement>('#mobile-hint')!;
@@ -665,6 +669,19 @@ function endTouchPointer(event:PointerEvent) {
 
 function cancelTouchPointers(){activePointers.clear();previousGestureDistance=0;mobileDragged=false;}
 
+function preventNativeDoubleTapZoom(event:TouchEvent) {
+  if(!touchMode||event.changedTouches.length!==1)return;
+  const touch=event.changedTouches[0];
+  const now=performance.now();
+  const isDoubleTap=event.target===lastTouchEndTarget&&now-lastTouchEndTime<350&&Math.hypot(touch.clientX-lastTouchEndX,touch.clientY-lastTouchEndY)<40;
+  if(isDoubleTap) {
+    event.preventDefault();
+    lastTouchEndTime=0;
+    return;
+  }
+  lastTouchEndTime=now;lastTouchEndX=touch.clientX;lastTouchEndY=touch.clientY;lastTouchEndTarget=event.target;
+}
+
 function updateCamera(dt:number) {
   if(document.pointerLockElement!==canvas) return;
   if(followedSubject){applyDesktopFollowCamera();return;}
@@ -777,6 +794,8 @@ canvas.addEventListener('pointerdown',beginTouchPointer);
 canvas.addEventListener('pointermove',moveTouchPointer);
 canvas.addEventListener('pointerup',endTouchPointer);
 canvas.addEventListener('pointercancel',cancelTouchPointers);
+document.addEventListener('touchend',preventNativeDoubleTapZoom,{passive:false});
+document.addEventListener('dblclick',event=>{if(touchMode)event.preventDefault()},{passive:false});
 document.querySelector('#camera-reset')!.addEventListener('click',()=>{if(playing)resetMobileCamera()});
 document.querySelector('#mobile-accuse')!.addEventListener('click',()=>accuse(selectedSubject));
 questionButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='?'?null:'?')});
