@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -11,30 +11,31 @@
       <canvas id="game"></canvas>
       <div class="noise"></div>
       <header class="hud top-hud">
-        <div class="brand"><b>THE ODD ONE</b><span>OBSERVATION TEST // 01</span></div>
+        <div class="brand"><b>THE ODD ONE</b><span data-ko="행동 관찰 실험 // 01" data-en="OBSERVATION TEST // 01">행동 관찰 실험 // 01</span></div>
         <div class="top-actions">
-          <button id="sound-toggle" class="sound-toggle" aria-pressed="true" aria-label="Turn sound off">SOUND ON</button>
+          <button id="language-toggle" class="language-toggle" aria-label="Switch to English">EN</button>
+          <button id="sound-toggle" class="sound-toggle" aria-pressed="true" aria-label="소리 끄기">소리 켜짐</button>
           <div class="status"><span class="live-dot"></span><span id="timer">00:00</span></div>
         </div>
       </header>
       <aside class="hud attempts-panel">
-        <span>ACCUSATIONS</span>
+        <span data-ko="남은 고발" data-en="ACCUSATIONS">남은 고발</span>
         <div id="attempts" class="attempts" aria-label="3 attempts remaining"></div>
       </aside>
-      <button id="rule-notes-toggle" class="hud rule-notes-toggle" aria-controls="rule-notes" aria-expanded="false">MISSION NOTES <b>5</b></button>
+      <button id="rule-notes-toggle" class="hud rule-notes-toggle" aria-controls="rule-notes" aria-expanded="false"><span data-ko="규칙 메모" data-en="MISSION NOTES">규칙 메모</span> <b>5</b></button>
       <aside id="rule-notes" class="hud rule-notes open" aria-label="Mission rule checklist" aria-hidden="true">
         <header>
-          <div><span>MISSION NOTES</span><b>RULE CHECKLIST</b></div>
-          <button id="rule-notes-close" aria-label="Hide mission notes">×</button>
+          <div><span data-ko="미션 메모" data-en="MISSION NOTES">미션 메모</span><b data-ko="규칙 체크리스트" data-en="RULE CHECKLIST">규칙 체크리스트</b></div>
+          <button id="rule-notes-close" aria-label="규칙 메모 접기">×</button>
         </header>
         <div class="rule-note-list">
-          <button class="rule-note" data-rule-note="redJump"><span class="note-index">1</span><i class="note-mark"></i><span class="note-copy"><b>RED JUMP</b><small>Near a red shirt → JUMP</small></span></button>
-          <button class="rule-note" data-rule-note="hatWave"><span class="note-index">2</span><i class="note-mark"></i><span class="note-copy"><b>HAT WAVE</b><small>Near a hat → WAVE</small></span></button>
-          <button class="rule-note" data-rule-note="centerSpin"><span class="note-index">3</span><i class="note-mark"></i><span class="note-copy"><b>CENTER SPIN</b><small>Enter the center → SPIN</small></span></button>
-          <button class="rule-note" data-rule-note="greetingWave"><span class="note-index">4</span><i class="note-mark"></i><span class="note-copy"><b>GREETING WAVE</b><small>Face each other → both WAVE</small></span></button>
-          <button class="rule-note bell-note" data-rule-note="bellJump"><span class="note-index">5</span><i class="note-mark"></i><span class="note-copy"><b>BELL EVENT</b><small>Fixed subjects JUMP · NOT A TARGET</small></span></button>
+          <button class="rule-note" data-rule-note="redJump"><span class="note-index">1</span><i class="note-mark"></i><span class="note-copy"><b data-ko="빨강 점프" data-en="RED JUMP">빨강 점프</b><small data-ko="빨간 옷 근처 → 점프" data-en="Near a red shirt → JUMP">빨간 옷 근처 → 점프</small></span></button>
+          <button class="rule-note" data-rule-note="hatWave"><span class="note-index">2</span><i class="note-mark"></i><span class="note-copy"><b data-ko="모자 인사" data-en="HAT WAVE">모자 인사</b><small data-ko="모자 쓴 사람 근처 → 손 흔들기" data-en="Near a hat → WAVE">모자 쓴 사람 근처 → 손 흔들기</small></span></button>
+          <button class="rule-note" data-rule-note="centerSpin"><span class="note-index">3</span><i class="note-mark"></i><span class="note-copy"><b data-ko="중앙 회전" data-en="CENTER SPIN">중앙 회전</b><small data-ko="중앙 구역 진입 → 회전" data-en="Enter the center → SPIN">중앙 구역 진입 → 회전</small></span></button>
+          <button class="rule-note" data-rule-note="greetingWave"><span class="note-index">4</span><i class="note-mark"></i><span class="note-copy"><b data-ko="마주보기 인사" data-en="GREETING WAVE">마주보기 인사</b><small data-ko="서로 마주봄 → 둘 다 손 흔들기" data-en="Face each other → both WAVE">서로 마주봄 → 둘 다 손 흔들기</small></span></button>
+          <button class="rule-note bell-note" data-rule-note="bellJump"><span class="note-index">5</span><i class="note-mark"></i><span class="note-copy"><b data-ko="종 이벤트" data-en="BELL EVENT">종 이벤트</b><small data-ko="고정 인원 점프 · 정답 규칙 아님" data-en="Fixed subjects JUMP · NOT A TARGET">고정 인원 점프 · 정답 규칙 아님</small></span></button>
         </div>
-        <footer><span class="desktop-note-help">N: HIDE · 1–5: ? → ✓ → STRIKE</span><span class="mobile-note-help">TAP: ? → ✓ → STRIKE → CLEAR</span></footer>
+        <footer><span class="desktop-note-help" data-ko="N: 접기 · 1–5: ? → ✓ → 취소선" data-en="N: HIDE · 1–5: ? → ✓ → STRIKE">N: 접기 · 1–5: ? → ✓ → 취소선</span><span class="mobile-note-help" data-ko="누르기: ? → ✓ → 취소선 → 해제" data-en="TAP: ? → ✓ → STRIKE → CLEAR">누르기: ? → ✓ → 취소선 → 해제</span></footer>
       </aside>
       <div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i><span></span></div>
       <div id="target-label" class="target-label"></div>
@@ -42,109 +43,115 @@
       <button id="camera-reset" class="mobile-ui camera-reset" aria-label="Reset camera">⌂</button>
       <div id="mobile-hint" class="mobile-ui mobile-hint" aria-live="polite"></div>
       <section id="mobile-selection" class="mobile-ui mobile-selection" aria-live="polite">
-        <div class="subject-info"><span>SELECTED SUBJECT</span><b id="mobile-subject">SUBJECT 01</b></div>
+        <div class="subject-info"><span data-ko="선택한 참가자" data-en="SELECTED NPC">선택한 참가자</span><b id="mobile-subject">영철</b></div>
         <div class="mark-controls" aria-label="Selected subject actions">
-          <button id="mark-question" aria-label="Mark selected subject to watch" aria-pressed="false"><b>?</b><small>WATCH</small></button>
-          <button id="mark-clear" aria-label="Mark selected subject as clear" aria-pressed="false"><b>✓</b><small>CLEAR</small></button>
-          <button id="mobile-follow" aria-label="Follow selected subject" aria-pressed="false"><b>◎</b><small>FOLLOW</small></button>
+          <button id="mark-question" aria-label="더 관찰할 참가자로 표시" aria-pressed="false"><b>?</b><small data-ko="관찰" data-en="WATCH">관찰</small></button>
+          <button id="mark-clear" aria-label="제외할 참가자로 표시" aria-pressed="false"><b>✓</b><small data-ko="제외" data-en="CLEAR">제외</small></button>
+          <button id="mobile-follow" aria-label="선택한 참가자 따라가기" aria-pressed="false"><b>◎</b><small data-ko="따라가기" data-en="FOLLOW">따라가기</small></button>
         </div>
-        <button id="mobile-accuse">ACCUSE <b>→</b></button>
+        <button id="mobile-accuse"><span data-ko="고발하기" data-en="ACCUSE">고발하기</span> <b>→</b></button>
       </section>
       <div class="controls hud">
-        <span><kbd>WASD</kbd> MOVE</span><span><kbd>Q E</kbd> ALTITUDE</span>
-        <span><kbd>SHIFT</kbd> BOOST</span><span><kbd>WHEEL</kbd> ZOOM</span><span><kbd>F</kbd> FOLLOW</span><span><kbd>RMB</kbd> MARK</span><span><kbd>CLICK</kbd> ACCUSE</span>
+        <span><kbd>WASD</kbd> <i data-ko="이동" data-en="MOVE">이동</i></span><span><kbd>Q E</kbd> <i data-ko="고도" data-en="ALTITUDE">고도</i></span>
+        <span><kbd>SHIFT</kbd> <i data-ko="가속" data-en="BOOST">가속</i></span><span><kbd>WHEEL</kbd> <i data-ko="줌" data-en="ZOOM">줌</i></span><span><kbd>F</kbd> <i data-ko="따라가기" data-en="FOLLOW">따라가기</i></span><span><kbd>ALT</kbd> <i data-ko="커서" data-en="CURSOR">커서</i></span><span><kbd>RMB</kbd> <i data-ko="표시" data-en="MARK">표시</i></span><span><kbd>CLICK</kbd> <i data-ko="고발" data-en="ACCUSE">고발</i></span>
       </div>
       <section id="start-screen" class="screen open">
-        <div class="eyebrow">BEHAVIORAL ANOMALY STUDY</div>
+        <div class="eyebrow" data-ko="행동 이상 관찰 실험" data-en="BEHAVIORAL ANOMALY STUDY">행동 이상 관찰 실험</div>
         <h1>FIND THE<br/><em>ODD ONE.</em></h1>
-        <p><span id="majority-copy">Five subjects follow one hidden rule.</span><br/>One subject does the opposite.</p>
+        <p><span id="majority-copy">5명이 하나의 숨은 규칙을 따릅니다.</span><br/><span data-ko="단 한 명만 반대로 행동합니다." data-en="One person does the opposite.">단 한 명만 반대로 행동합니다.</span></p>
         <div class="participant-selector" role="radiogroup" aria-label="Number of participating subjects">
-          <span>CHOOSE SUBJECT COUNT</span>
+          <span data-ko="참가 인원 선택" data-en="CHOOSE NPC COUNT">참가 인원 선택</span>
           <div>
-            <button class="active" data-participant-count="6" role="radio" aria-checked="true">6 <small>EASY</small></button>
-            <button data-participant-count="9" role="radio" aria-checked="false">9 <small>MEDIUM</small></button>
-            <button data-participant-count="12" role="radio" aria-checked="false">12 <small>HARD</small></button>
+            <button class="active" data-participant-count="6" role="radio" aria-checked="true">6 <small data-ko="쉬움" data-en="EASY">쉬움</small></button>
+            <button data-participant-count="9" role="radio" aria-checked="false">9 <small data-ko="보통" data-en="MEDIUM">보통</small></button>
+            <button data-participant-count="12" role="radio" aria-checked="false">12 <small data-ko="어려움" data-en="HARD">어려움</small></button>
+            <button data-participant-count="24" role="radio" aria-checked="false">24 <small data-ko="극한" data-en="EXTREME">극한</small></button>
           </div>
         </div>
-        <div class="rule-strip"><span id="subject-count-summary">6 SUBJECTS</span><span>4 TARGET RULES</span><span>3 CHANCES</span></div>
-        <button id="play-button" class="primary">BEGIN OBSERVATION <b>→</b></button>
-        <small id="device-note">HEADPHONES RECOMMENDED · DESKTOP & MOBILE</small>
+        <div class="rule-strip"><span id="subject-count-summary">참가자 6명</span><span data-ko="정답 후보 4개" data-en="4 TARGET RULES">정답 후보 4개</span><span data-ko="기회 3번" data-en="3 CHANCES">기회 3번</span></div>
+        <button id="play-button" class="primary"><span data-ko="관찰 시작" data-en="BEGIN OBSERVATION">관찰 시작</span> <b>→</b></button>
+        <small id="device-note" data-ko="헤드폰 권장 · 데스크톱과 모바일 지원" data-en="HEADPHONES RECOMMENDED · DESKTOP & MOBILE">헤드폰 권장 · 데스크톱과 모바일 지원</small>
       </section>
       <section id="pause-screen" class="screen pause-screen" aria-hidden="true">
-        <div class="eyebrow">OBSERVATION SUSPENDED</div>
-        <h2>PAUSED.</h2>
-        <p>The subjects and event clock are frozen.</p>
-        <button id="resume-button" class="primary">RESUME OBSERVATION <b>→</b></button>
-        <button id="view-controls-button" class="secondary">VIEW CONTROLS</button>
-        <button id="pause-sound-toggle" class="pause-sound-toggle" aria-pressed="true">SOUND ON</button>
-        <button id="end-observation-button" class="secondary danger-button">END OBSERVATION · HOME</button>
-        <small>PRESS ESC TO RESUME</small>
+        <div class="eyebrow" data-ko="관찰 일시정지" data-en="OBSERVATION SUSPENDED">관찰 일시정지</div>
+        <h2 data-ko="정지됨" data-en="PAUSED.">정지됨</h2>
+        <p data-ko="참가자와 이벤트 시간이 멈췄습니다." data-en="The NPCs and event clock are frozen.">참가자와 이벤트 시간이 멈췄습니다.</p>
+        <button id="resume-button" class="primary"><span data-ko="관찰 계속하기" data-en="RESUME OBSERVATION">관찰 계속하기</span> <b>→</b></button>
+        <button id="view-controls-button" class="secondary" data-ko="조작법 보기" data-en="VIEW CONTROLS">조작법 보기</button>
+        <button id="pause-sound-toggle" class="pause-sound-toggle" aria-pressed="true">소리 켜짐</button>
+        <button id="end-observation-button" class="secondary danger-button" data-ko="관찰 종료 · 처음으로" data-en="END OBSERVATION · HOME">관찰 종료 · 처음으로</button>
+        <small data-ko="ESC를 누르면 계속합니다" data-en="PRESS ESC TO RESUME">ESC를 누르면 계속합니다</small>
       </section>
       <section id="controls-screen" class="screen controls-screen" aria-hidden="true">
         <div class="controls-dialog">
           <div class="controls-heading">
-            <div class="eyebrow">FIELD OPERATOR HANDBOOK</div>
-            <h2>HOW TO OBSERVE</h2>
-            <p>Watch first. Mark your theory. Accuse only when you are ready.</p>
+            <div class="eyebrow" data-ko="현장 관찰자 안내서" data-en="FIELD OPERATOR HANDBOOK">현장 관찰자 안내서</div>
+            <h2 data-ko="관찰 조작법" data-en="HOW TO OBSERVE">관찰 조작법</h2>
+            <p data-ko="먼저 관찰하고, 가설을 표시한 뒤, 확신이 들 때 고발하세요." data-en="Watch first. Mark your theory. Accuse only when you are ready.">먼저 관찰하고, 가설을 표시한 뒤, 확신이 들 때 고발하세요.</p>
           </div>
           <div class="desktop-guide" aria-label="Desktop controls">
             <div class="guide-card move-guide">
-              <span class="guide-title">MOVE</span>
+              <span class="guide-title" data-ko="이동" data-en="MOVE">이동</span>
               <div class="wasd-map">
                 <kbd>W</kbd>
                 <span></span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
               </div>
-              <p>Fly across the observation field</p>
+              <p data-ko="관찰 구역을 자유롭게 이동" data-en="Fly across the observation field">관찰 구역을 자유롭게 이동</p>
             </div>
             <div class="guide-card">
-              <span class="guide-title">ALTITUDE</span>
+              <span class="guide-title" data-ko="고도" data-en="ALTITUDE">고도</span>
               <div class="key-line"><kbd>Q</kbd><b>↓</b><kbd>E</kbd><b>↑</b></div>
-              <p>Descend / ascend</p>
+              <p data-ko="하강 / 상승" data-en="Descend / ascend">하강 / 상승</p>
             </div>
             <div class="guide-card">
-              <span class="guide-title">SPEED</span>
+              <span class="guide-title" data-ko="속도" data-en="SPEED">속도</span>
               <div class="key-line"><kbd class="wide-key">SHIFT</kbd></div>
-              <p>Hold to boost movement</p>
+              <p data-ko="누르고 있는 동안 빠르게 이동" data-en="Hold to boost movement">누르고 있는 동안 빠르게 이동</p>
             </div>
             <div class="guide-card">
-              <span class="guide-title">FOLLOW</span>
+              <span class="guide-title" data-ko="따라가기" data-en="FOLLOW">따라가기</span>
               <div class="key-line"><kbd>F</kbd></div>
-              <p>Track / release aimed subject</p>
+              <p data-ko="조준한 참가자 추적 / 해제" data-en="Track / release aimed subject">조준한 참가자 추적 / 해제</p>
             </div>
             <div class="guide-card">
-              <span class="guide-title">PAUSE</span>
+              <span class="guide-title" data-ko="일시정지" data-en="PAUSE">일시정지</span>
               <div class="key-line"><kbd class="wide-key">ESC</kbd></div>
-              <p>Pause observation</p>
+              <p data-ko="관찰 일시정지" data-en="Pause observation">관찰 일시정지</p>
+            </div>
+            <div class="guide-card">
+              <span class="guide-title" data-ko="커서" data-en="CURSOR">커서</span>
+              <div class="key-line"><kbd class="wide-key">ALT</kbd></div>
+              <p data-ko="누르고 있는 동안 커서를 풀어 메모 사용" data-en="Hold to free the cursor and use notes">누르고 있는 동안 커서를 풀어 메모 사용</p>
             </div>
             <div class="guide-card mouse-guide">
-              <span class="guide-title">MOUSE</span>
+              <span class="guide-title" data-ko="마우스" data-en="MOUSE">마우스</span>
               <div class="mouse-map"><i>LMB</i><i>RMB</i><span></span></div>
-              <div class="mouse-labels"><b>ACCUSE</b><b>MARK ? / ✓</b><b>WHEEL · ZOOM</b></div>
-              <p>Move to look · Page Up / Down also zoom</p>
+              <div class="mouse-labels"><b data-ko="고발" data-en="ACCUSE">고발</b><b data-ko="표시 ? / ✓" data-en="MARK ? / ✓">표시 ? / ✓</b><b data-ko="휠 · 줌" data-en="WHEEL · ZOOM">휠 · 줌</b></div>
+              <p data-ko="움직여 시점 변경 · Page Up / Down도 줌" data-en="Move to look · Page Up / Down also zoom">움직여 시점 변경 · Page Up / Down도 줌</p>
             </div>
           </div>
           <div class="mobile-guide" aria-label="Mobile controls">
-            <div class="gesture-card"><b>☝</b><span>ONE FINGER</span><p>Drag to orbit the camera</p></div>
-            <div class="gesture-card"><b>✌</b><span>TWO FINGERS</span><p>Drag to move the view</p></div>
-            <div class="gesture-card"><b>↔</b><span>PINCH</span><p>Zoom in and out</p></div>
-            <div class="gesture-card"><b>◎</b><span>TAP SUBJECT</span><p>Select an NPC</p></div>
-            <div class="gesture-card"><b>? ✓</b><span>WATCH / CLEAR</span><p>Record your theory</p></div>
-            <div class="gesture-card"><b>◉</b><span>FOLLOW</span><p>Track the selected NPC</p></div>
-            <div class="gesture-card"><b>→</b><span>ACCUSE</span><p>Commit your accusation</p></div>
-            <div class="gesture-card"><b>⌂</b><span>RESET</span><p>Release follow and see all</p></div>
+            <div class="gesture-card"><b>☝</b><span data-ko="한 손가락" data-en="ONE FINGER">한 손가락</span><p data-ko="드래그해 카메라 회전" data-en="Drag to orbit the camera">드래그해 카메라 회전</p></div>
+            <div class="gesture-card"><b>✌</b><span data-ko="두 손가락" data-en="TWO FINGERS">두 손가락</span><p data-ko="드래그해 시점 이동" data-en="Drag to move the view">드래그해 시점 이동</p></div>
+            <div class="gesture-card"><b>↔</b><span data-ko="핀치" data-en="PINCH">핀치</span><p data-ko="확대 / 축소" data-en="Zoom in and out">확대 / 축소</p></div>
+            <div class="gesture-card"><b>◎</b><span data-ko="참가자 누르기" data-en="TAP NPC">참가자 누르기</span><p data-ko="NPC 선택" data-en="Select an NPC">NPC 선택</p></div>
+            <div class="gesture-card"><b>? ✓</b><span data-ko="관찰 / 제외" data-en="WATCH / CLEAR">관찰 / 제외</span><p data-ko="가설을 메모" data-en="Record your theory">가설을 메모</p></div>
+            <div class="gesture-card"><b>◉</b><span data-ko="따라가기" data-en="FOLLOW">따라가기</span><p data-ko="선택한 NPC 추적" data-en="Track the selected NPC">선택한 NPC 추적</p></div>
+            <div class="gesture-card"><b>→</b><span data-ko="고발" data-en="ACCUSE">고발</span><p data-ko="선택한 NPC를 정답으로 지목" data-en="Commit your accusation">선택한 NPC를 정답으로 지목</p></div>
+            <div class="gesture-card"><b>⌂</b><span data-ko="초기화" data-en="RESET">초기화</span><p data-ko="추적 해제 후 전체 보기" data-en="Release follow and see all">추적 해제 후 전체 보기</p></div>
           </div>
-          <button id="controls-close-button" class="primary">START OBSERVATION <b>→</b></button>
-          <small class="controls-footnote">YOU CAN REOPEN THIS GUIDE FROM THE PAUSE SCREEN</small>
+          <button id="controls-close-button" class="primary">관찰 시작 <b>→</b></button>
+          <small class="controls-footnote" data-ko="일시정지 화면에서 이 안내를 다시 열 수 있습니다" data-en="YOU CAN REOPEN THIS GUIDE FROM THE PAUSE SCREEN">일시정지 화면에서 이 안내를 다시 열 수 있습니다</small>
         </div>
       </section>
       <section id="end-screen" class="screen result-screen">
         <div id="result-kicker" class="eyebrow"></div>
         <h2 id="result-title"></h2>
         <div class="reveal">
-          <div><span>TARGET RULE</span><b id="reveal-rule"></b></div>
-          <div><span>ODD SUBJECT</span><b id="reveal-npc"></b></div>
+          <div><span data-ko="정답 규칙" data-en="TARGET RULE">정답 규칙</span><b id="reveal-rule"></b></div>
+          <div><span data-ko="홀로 다른 참가자" data-en="ODD NPC">홀로 다른 참가자</span><b id="reveal-npc"></b></div>
         </div>
-        <button id="replay-button" class="primary">PLAY AGAIN <b>↻</b></button>
+        <button id="replay-button" class="primary"><span data-ko="다시 플레이" data-en="PLAY AGAIN">다시 플레이</span> <b>↻</b></button>
       </section>
     </div>
     <script type="module" src="/src/main.ts"></script>

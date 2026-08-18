@@ -6,18 +6,22 @@ type ActionName = 'jump' | 'wave' | 'spin';
 type SubjectMark = '?' | '✓' | null;
 type RuleNoteMark = '?' | '✓' | 'strike' | null;
 type ControlsOrigin = 'start' | 'pause';
+type Language = 'ko' | 'en';
 
 interface RuleDefinition { id: RuleId; label: string; action: ActionName; }
 interface ActivePointer { x: number; y: number; startX: number; startY: number; }
 interface Subject {
   id: number;
+  name: string;
   root: THREE.Group;
   body: THREE.Group;
   leftArm: THREE.Group;
   rightArm: THREE.Group;
   marker: THREE.Sprite;
   markSprite: THREE.Sprite;
+  inspectedSprite: THREE.Sprite;
   mark: SubjectMark;
+  inspected: boolean;
   hat: boolean;
   red: boolean;
   obeys: Record<RuleId, boolean>;
@@ -37,7 +41,13 @@ const RULES: RuleDefinition[] = [
   { id: 'greetingWave', label: 'GREETING WAVE', action: 'wave' },
 ];
 const TARGET_RULES = RULES.filter(rule=>rule.id!=='bellJump');
-const PARTICIPANT_OPTIONS = [6,9,12] as const;
+const PARTICIPANT_OPTIONS = [6,9,12,24] as const;
+const SUBJECT_NAMES = ['영수','영호','영식','영철','광수','상철','민수','준호','태수','성훈','진우','동진','영숙','정숙','순자','영자','옥순','현숙','지영','수진','민지','혜진','은영','보람'];
+const ARENA_SIZES:Record<typeof PARTICIPANT_OPTIONS[number],number>={6:30,9:38,12:44,24:58};
+const RULE_LABELS:Record<RuleId,{ko:string;en:string}>={
+  redJump:{ko:'빨강 점프',en:'RED JUMP'},hatWave:{ko:'모자 인사',en:'HAT WAVE'},centerSpin:{ko:'중앙 회전',en:'CENTER SPIN'},
+  bellJump:{ko:'종 이벤트',en:'BELL EVENT'},greetingWave:{ko:'마주보기 인사',en:'GREETING WAVE'},
+};
 const RULE_NOTE_ORDER:RuleId[]=['redJump','hatWave','centerSpin','greetingWave','bellJump'];
 const ruleNoteMarks={} as Record<RuleId,RuleNoteMark>;
 RULES.forEach(rule=>ruleNoteMarks[rule.id]=null);
@@ -72,17 +82,19 @@ scene.add(sun);
 
 const world = new THREE.Group();
 scene.add(world);
+const environment = new THREE.Group();
+world.add(environment);
 const floorMat = new THREE.MeshStandardMaterial({ color: 0x5b5a4d, roughness: .95, metalness: 0 });
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(58, 58), floorMat);
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
-world.add(floor);
+environment.add(floor);
 
 const grid = new THREE.GridHelper(58, 29, 0x787665, 0x686657);
 grid.position.y = .012;
 grid.material.transparent = true;
 grid.material.opacity = .32;
-world.add(grid);
+environment.add(grid);
 
 const centerRing = new THREE.Mesh(
   new THREE.RingGeometry(5.6, 5.85, 64),
@@ -90,18 +102,18 @@ const centerRing = new THREE.Mesh(
 );
 centerRing.rotation.x = -Math.PI / 2;
 centerRing.position.y = .03;
-world.add(centerRing);
+environment.add(centerRing);
 
 function box(size: [number, number, number], color: number, x: number, y: number, z: number) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), new THREE.MeshStandardMaterial({ color, roughness: .85 }));
-  mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true; world.add(mesh); return mesh;
+  mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true; environment.add(mesh); return mesh;
 }
 
 // Sparse landmarks make NPC paths and distances easy to read from the air.
 for (const [x, z] of [[-24,-24],[24,-24],[-24,24],[24,24]] as [number,number][]) {
   box([2.5, 5.5, 2.5], 0x34342f, x, 2.75, z);
-  const lamp = new THREE.PointLight(0xf4b942, 17, 12, 2); lamp.position.set(x, 5.7, z); world.add(lamp);
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(.24, 10, 8), new THREE.MeshBasicMaterial({color:0xf4b942})); bulb.position.copy(lamp.position); world.add(bulb);
+  const lamp = new THREE.PointLight(0xf4b942, 17, 12, 2); lamp.position.set(x, 5.7, z); environment.add(lamp);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(.24, 10, 8), new THREE.MeshBasicMaterial({color:0xf4b942})); bulb.position.copy(lamp.position); environment.add(bulb);
 }
 for (const [x,z,w,d] of [[-18,0,4,10],[18,0,4,10],[0,-18,10,4],[0,18,10,4]] as [number,number,number,number][]) box([w,.38,d],0x45453e,x,.19,z);
 
@@ -109,7 +121,7 @@ const bellRig = new THREE.Group();
 const bellPost = new THREE.Mesh(new THREE.CylinderGeometry(.18,.22,6,10), new THREE.MeshStandardMaterial({color:0x232421}));
 bellPost.position.y=3; bellRig.add(bellPost);
 const bell = new THREE.Mesh(new THREE.CylinderGeometry(.9,.45,1.1,16,1,true),new THREE.MeshStandardMaterial({color:0xc58d24,metalness:.65,roughness:.3,side:THREE.DoubleSide}));
-bell.position.y=6.1; bellRig.add(bell); bellRig.position.set(0,0,-25); world.add(bellRig);
+bell.position.y=6.1; bellRig.add(bell); bellRig.position.set(0,0,-25); environment.add(bellRig);
 
 const shirtColors = [0xc94f43,0x325b82,0xc8a642,0x567359,0x703e68,0xd3d0bd];
 const pantsColors = [0x222a35,0x4a4037,0x26362e,0x47464d];
@@ -117,23 +129,31 @@ const skinColors = [0xf0c6a1,0xc98d62,0x8e573d,0x5e382b];
 const hairColors = [0x17130f,0x4a2d1a,0xd0aa65,0x6a6a62];
 const subjects: Subject[] = [];
 const pickables: THREE.Object3D[] = [];
-const markerTexture = makeMarkerTexture();
 const questionTexture = makeSymbolTexture('?', '#74b9e8');
 const clearTexture = makeSymbolTexture('✓', '#52c6a5');
+const inspectedTextures={ko:makeInspectedTexture('확인됨'),en:makeInspectedTexture('INSPECTED')};
 
 function mat(color: number) { return new THREE.MeshStandardMaterial({ color, roughness: .85 }); }
 function mesh(geometry: THREE.BufferGeometry, material: THREE.Material, parent: THREE.Object3D, y = 0) {
   const value = new THREE.Mesh(geometry, material); value.position.y = y; value.castShadow = true; value.receiveShadow = true; parent.add(value); return value;
 }
 
-function makeMarkerTexture() {
+function makeMarkerTexture(label:string) {
   const c = document.createElement('canvas'); c.width = 256; c.height = 96;
   const ctx = c.getContext('2d')!; ctx.fillStyle='#f4b942'; ctx.beginPath(); ctx.roundRect(4,4,248,88,14); ctx.fill();
   ctx.fillStyle='#171713'; ctx.textAlign='center'; ctx.textBaseline='middle';
   let fontSize=46;
-  do { ctx.font=`700 ${fontSize--}px Space Grotesk`; } while(ctx.measureText('SUBJECT').width>216&&fontSize>30);
-  ctx.fillText('SUBJECT',128,50);
+  do { ctx.font=`700 ${fontSize--}px "Noto Sans KR", Space Grotesk, sans-serif`; } while(ctx.measureText(label).width>216&&fontSize>30);
+  ctx.fillText(label,128,50);
   const texture = new THREE.CanvasTexture(c); texture.colorSpace=THREE.SRGBColorSpace; return texture;
+}
+
+function makeInspectedTexture(label:string) {
+  const c=document.createElement('canvas');c.width=320;c.height=92;
+  const ctx=c.getContext('2d')!;ctx.fillStyle='rgba(17,17,15,.94)';ctx.beginPath();ctx.roundRect(4,4,312,84,16);ctx.fill();
+  ctx.strokeStyle='#e65b47';ctx.lineWidth=7;ctx.beginPath();ctx.arc(48,42,18,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(61,55);ctx.lineTo(79,73);ctx.stroke();
+  ctx.fillStyle='#ff8c79';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 32px "Noto Sans KR", Space Grotesk, sans-serif';ctx.fillText(label,194,48);
+  const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;return texture;
 }
 
 function makeSymbolTexture(symbol:string,color:string) {
@@ -149,6 +169,7 @@ function makeSymbolTexture(symbol:string,color:string) {
 }
 
 function makeSubject(id: number): Subject {
+  const name=SUBJECT_NAMES[id];
   const root = new THREE.Group(); root.userData.subjectId = id;
   const body = new THREE.Group(); root.add(body);
   const shirt = id < 3 ? 0xc94f43 : shirtColors[id % shirtColors.length];
@@ -169,16 +190,18 @@ function makeSubject(id: number): Subject {
     const brim=mesh(new THREE.CylinderGeometry(.65,.65,.12,12),mat(0x272722),body,4.43); brim.userData.subjectId=id;
     const cap=mesh(new THREE.CylinderGeometry(.44,.52,.42,12),mat(id%2?0xd3ac3b:0x454c3f),body,4.67); cap.userData.subjectId=id;
   }
-  const marker = new THREE.Sprite(new THREE.SpriteMaterial({map:markerTexture,transparent:true,depthTest:false,opacity:0}));
+  const marker = new THREE.Sprite(new THREE.SpriteMaterial({map:makeMarkerTexture(name),transparent:true,depthTest:false,opacity:0}));
   marker.scale.set(3.2,1.2,1); marker.position.y=6.45; root.add(marker);
   const markSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:questionTexture,transparent:true,depthTest:false,opacity:0}));
   markSprite.scale.set(1.45,1.45,1);markSprite.position.y=5.25;root.add(markSprite);
+  const inspectedSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:inspectedTextures.ko,transparent:true,depthTest:false,opacity:0}));
+  inspectedSprite.scale.set(3.5,1,1);inspectedSprite.position.y=7.55;root.add(inspectedSprite);
   root.position.set((id%4-1.5)*6.5,0,(Math.floor(id/4)-1)*8);
   root.traverse(child=>{ if((child as THREE.Mesh).isMesh){ child.userData.subjectId=id; pickables.push(child); }});
   world.add(root);
-  return { id,root,body,leftArm,rightArm,marker,markSprite,mark:null,hat,red:shirt===0xc94f43,obeys:{} as Record<RuleId,boolean>,waypoint:new THREE.Vector3(),speed:1.7+Math.random()*.6,action:null,actionTime:0,cooldowns:{redJump:0,hatWave:0,centerSpin:0,bellJump:0,greetingWave:0},lastCenterInside:false };
+  return { id,name,root,body,leftArm,rightArm,marker,markSprite,inspectedSprite,mark:null,inspected:false,hat,red:shirt===0xc94f43,obeys:{} as Record<RuleId,boolean>,waypoint:new THREE.Vector3(),speed:1.7+Math.random()*.6,action:null,actionTime:0,cooldowns:{redJump:0,hatWave:0,centerSpin:0,bellJump:0,greetingWave:0},lastCenterInside:false };
 }
-for(let i=0;i<12;i++) subjects.push(makeSubject(i));
+for(let i=0;i<24;i++) subjects.push(makeSubject(i));
 
 let targetRule = TARGET_RULES[0];
 let participantCount:typeof PARTICIPANT_OPTIONS[number]=6;
@@ -190,6 +213,13 @@ let playing = false;
 let paused = false;
 let soundEnabled = true;
 let pointerLockAcquired = false;
+let altCursorMode = false;
+let language:Language=readLanguage();
+let roundResult:'success'|'fail'|null=null;
+let arenaSize=ARENA_SIZES[participantCount];
+let arenaHalf=arenaSize/2;
+let arenaScale=arenaSize/58;
+let centerTriggerRadius=5.6*arenaScale;
 let suppressAccusationUntil = 0;
 let controlsOrigin: ControlsOrigin = 'start';
 let controlsAcknowledged = readControlsAcknowledged();
@@ -225,6 +255,32 @@ const subjectCountSummary=document.querySelector<HTMLElement>('#subject-count-su
 const ruleNotes=document.querySelector<HTMLElement>('#rule-notes')!;
 const ruleNotesToggle=document.querySelector<HTMLButtonElement>('#rule-notes-toggle')!;
 const ruleNoteRows=[...document.querySelectorAll<HTMLButtonElement>('[data-rule-note]')];
+const languageToggle=document.querySelector<HTMLButtonElement>('#language-toggle')!;
+
+function copy(ko:string,en:string){return language==='ko'?ko:en;}
+
+function readLanguage():Language {
+  try { return localStorage.getItem('the-odd-one-language')==='en'?'en':'ko'; }
+  catch { return 'ko'; }
+}
+
+function applyLanguage() {
+  document.documentElement.lang=language;
+  document.querySelectorAll<HTMLElement>('[data-ko][data-en]').forEach(element=>{element.textContent=element.dataset[language]??'';});
+  languageToggle.textContent=language==='ko'?'EN':'한국어';
+  languageToggle.setAttribute('aria-label',language==='ko'?'Switch to English':'한국어로 전환');
+  subjects.forEach(subject=>{subject.inspectedSprite.material.map=inspectedTextures[language];subject.inspectedSprite.material.needsUpdate=true;});
+  setParticipantCount(participantCount);updateSoundButtons();updateAttempts();updateFollowButton();
+  RULE_NOTE_ORDER.forEach(updateRuleNote);
+  if(controlsScreen.classList.contains('open'))updateControlsCloseButton();
+  if(roundResult)updateResultCopy();
+}
+
+function toggleLanguage(){
+  language=language==='ko'?'en':'ko';
+  try { localStorage.setItem('the-odd-one-language',language); } catch { /* Keep the current session language. */ }
+  applyLanguage();
+}
 
 function readControlsAcknowledged() {
   try { return localStorage.getItem('the-odd-one-controls-v1')==='seen'; }
@@ -239,10 +295,14 @@ function rememberControlsAcknowledged() {
 
 function openControls(origin:ControlsOrigin) {
   controlsOrigin=origin;
-  controlsCloseButton.innerHTML=origin==='start'?'START OBSERVATION <b>→</b>':'BACK TO PAUSE <b>←</b>';
+  updateControlsCloseButton();
   controlsScreen.classList.add('open');
   controlsScreen.setAttribute('aria-hidden','false');
   controlsCloseButton.focus();
+}
+
+function updateControlsCloseButton() {
+  controlsCloseButton.innerHTML=controlsOrigin==='start'?`${copy('관찰 시작','START OBSERVATION')} <b>→</b>`:`${copy('일시정지로 돌아가기','BACK TO PAUSE')} <b>←</b>`;
 }
 
 function closeControls() {
@@ -263,7 +323,7 @@ function subjectFocus(subject:Subject) {
 function resetMobileCamera() {
   setFollowSubject(null,false);
   mobileTarget.set(0,1.8,0);
-  mobileSpherical.set(innerHeight > innerWidth ? 39 : 35,1.06,0);
+  mobileSpherical.set(THREE.MathUtils.clamp(arenaSize*(innerHeight>innerWidth?.67:.6),18,42),1.06,0);
   applyMobileCamera();
 }
 
@@ -281,8 +341,8 @@ function setMobileHint(message:string) {
 
 function advanceMobileTutorial(step:'orbit'|'multi'|'select') {
   if(mobileTutorialComplete)return;
-  if(step==='orbit'&&mobileTutorialStep===0) { mobileTutorialStep=1; setMobileHint('TWO FINGERS · MOVE & ZOOM'); }
-  if(step==='multi'&&mobileTutorialStep<=1) { mobileTutorialStep=2; setMobileHint('TAP A SUBJECT · SELECT'); }
+  if(step==='orbit'&&mobileTutorialStep===0) { mobileTutorialStep=1; setMobileHint(copy('두 손가락 · 이동과 줌','TWO FINGERS · MOVE & ZOOM')); }
+  if(step==='multi'&&mobileTutorialStep<=1) { mobileTutorialStep=2; setMobileHint(copy('참가자를 눌러 선택','TAP AN NPC · SELECT')); }
   if(step==='select') { mobileTutorialStep=3; mobileTutorialComplete=true; mobileHint.classList.remove('show'); }
 }
 
@@ -292,7 +352,7 @@ function selectSubject(subject:Subject|null) {
   document.body.classList.toggle('selection-active',!!subject);
   mobileSelection.classList.toggle('open',!!subject);
   if(subject) {
-    mobileSubjectLabel.textContent=`SUBJECT ${String(subject.id+1).padStart(2,'0')}`;
+    mobileSubjectLabel.textContent=subject.name;
     advanceMobileTutorial('select');
   }
   updateMarkButtons();
@@ -310,7 +370,7 @@ function updateFollowButton() {
   const active=!!selectedSubject&&followedSubject===selectedSubject;
   followButton.classList.toggle('active',active);
   followButton.setAttribute('aria-pressed',String(active));
-  followButton.querySelector('small')!.textContent=active?'RELEASE':'FOLLOW';
+  followButton.querySelector('small')!.textContent=active?copy('해제','RELEASE'):copy('따라가기','FOLLOW');
 }
 
 function applyDesktopFollowCamera() {
@@ -332,10 +392,10 @@ function setFollowSubject(subject:Subject|null,notify=true) {
       desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi,.35,1.4);
       applyDesktopFollowCamera();
     }
-    if(notify)showToast(`FOLLOWING SUBJECT ${String(subject.id+1).padStart(2,'0')}`,false,1100);
+    if(notify)showToast(copy(`${subject.name} 따라가는 중`,`FOLLOWING ${subject.name}`),false,1100);
   } else {
     if(!touchMode){camera.rotation.order='YXZ';yaw=camera.rotation.y;pitch=camera.rotation.x;}
-    if(notify)showToast('FOLLOW RELEASED',false,900);
+    if(notify)showToast(copy('따라가기 해제','FOLLOW RELEASED'),false,900);
   }
   updateFollowButton();
 }
@@ -365,8 +425,8 @@ function cycleSubjectMark(subject:Subject) {
 
 function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
   participantCount=count;
-  majorityCopy.textContent=`${count-1} subjects follow one hidden rule.`;
-  subjectCountSummary.textContent=`${count} SUBJECTS`;
+  majorityCopy.textContent=copy(`${count-1}명이 하나의 숨은 규칙을 따릅니다.`,`${count-1} NPCs follow one hidden rule.`);
+  subjectCountSummary.textContent=copy(`참가자 ${count}명`,`${count} NPCS`);
   participantButtons.forEach(button=>{
     const active=Number(button.dataset.participantCount)===count;
     button.classList.toggle('active',active);button.setAttribute('aria-checked',String(active));
@@ -381,8 +441,9 @@ function setRuleNotesOpen(value:boolean) {
 function updateRuleNote(ruleId:RuleId) {
   const row=ruleNoteRows.find(button=>button.dataset.ruleNote===ruleId);if(!row)return;
   const mark=ruleNoteMarks[ruleId];row.classList.toggle('mark-question',mark==='?');row.classList.toggle('mark-check',mark==='✓');row.classList.toggle('mark-strike',mark==='strike');
-  const label=row.querySelector('.note-copy b')?.textContent??ruleId;const state=mark==='?'?'questioned':mark==='✓'?'checked':mark==='strike'?'ruled out':'unmarked';
-  row.setAttribute('aria-label',`${label}: ${state}. Cycle checklist mark.`);
+  const label=row.querySelector('.note-copy b')?.textContent??ruleId;
+  const state=language==='ko'?(mark==='?'?'의심':mark==='✓'?'확인':mark==='strike'?'제외':'표시 없음'):(mark==='?'?'questioned':mark==='✓'?'checked':mark==='strike'?'ruled out':'unmarked');
+  row.setAttribute('aria-label',language==='ko'?`${label}: ${state}. 눌러서 표시 변경.`:`${label}: ${state}. Cycle checklist mark.`);
 }
 
 function cycleRuleNote(ruleId:RuleId) {
@@ -394,8 +455,14 @@ function resetRuleNotes() {
 }
 
 function randomWaypoint(out: THREE.Vector3) {
-  out.set(THREE.MathUtils.randFloat(-24,24),0,THREE.MathUtils.randFloat(-24,24));
-  if(Math.abs(out.x)<6.5 && Math.abs(out.z)<6.5 && Math.random()<.45) out.multiplyScalar(1.8);
+  const limit=Math.max(8,arenaHalf-5);
+  out.set(THREE.MathUtils.randFloat(-limit,limit),0,THREE.MathUtils.randFloat(-limit,limit));
+  if(Math.abs(out.x)<centerTriggerRadius*1.15 && Math.abs(out.z)<centerTriggerRadius*1.15 && Math.random()<.45) out.multiplyScalar(1.5);
+}
+
+function configureArena() {
+  arenaSize=ARENA_SIZES[participantCount];arenaHalf=arenaSize/2;arenaScale=arenaSize/58;centerTriggerRadius=5.6*arenaScale;
+  environment.scale.set(arenaScale,1,arenaScale);
 }
 
 function chooseParticipants(count:number,rule:RuleDefinition) {
@@ -408,10 +475,12 @@ function chooseParticipants(count:number,rule:RuleDefinition) {
 function noiseCountsFor(count:number) {
   if(count===6)return [2,3,3,4];
   if(count===9)return [3,4,5,6];
-  return [5,6,6,7];
+  if(count===12)return [5,6,6,7];
+  return [10,12,12,14];
 }
 
 function configureRound() {
+  configureArena();
   targetRule=TARGET_RULES[Math.floor(Math.random()*TARGET_RULES.length)];
   activeSubjects=chooseParticipants(participantCount,targetRule);activeSubjectIds=new Set(activeSubjects.map(subject=>subject.id));
   oddId=activeSubjects[Math.floor(Math.random()*activeSubjects.length)].id;
@@ -426,12 +495,12 @@ function configureRound() {
     subjects[oddId].obeys[rule.id]=oddObeys;
     others.slice(0,desired-(oddObeys?1:0)).forEach(subject=>subject.obeys[rule.id]=true);
   });
-  const columns=participantCount===12?4:3;const rows=Math.ceil(participantCount/columns);
+  const columns=participantCount<=9?3:participantCount<=12?4:6;const rows=Math.ceil(participantCount/columns);
   subjects.forEach(s=>{
-    randomWaypoint(s.waypoint); s.action=null; s.actionTime=0; s.body.position.y=0; s.body.rotation.set(0,0,0); s.marker.material.opacity=0;s.marker.material.color.set(0xffffff);setSubjectMark(s,null);
+    randomWaypoint(s.waypoint); s.action=null; s.actionTime=0; s.body.position.y=0; s.body.rotation.set(0,0,0); s.marker.material.opacity=0;s.marker.material.color.set(0xffffff);s.inspected=false;s.inspectedSprite.material.opacity=0;setSubjectMark(s,null);
     Object.keys(s.cooldowns).forEach(k=>s.cooldowns[k as RuleId]=0); s.lastCenterInside=false;
   });
-  activeSubjects.forEach((subject,index)=>subject.root.position.set((index%columns-(columns-1)/2)*7,0,(Math.floor(index/columns)-(rows-1)/2)*8));
+  activeSubjects.forEach((subject,index)=>subject.root.position.set((index%columns-(columns-1)/2)*6.5,0,(Math.floor(index/columns)-(rows-1)/2)*7));
   validateRoundConfiguration();
   attempts=3; roundTime=0; bellTimer=THREE.MathUtils.randFloat(7,10); updateAttempts();resetRuleNotes();
 }
@@ -462,7 +531,7 @@ function ringBell() {
     subject.cooldowns.bellJump=3.5;subject.action='jump';subject.actionTime=0;
     subject.body.position.y=0;subject.body.rotation.y=0;subject.rightArm.rotation.z=0;
   });
-  bell.scale.set(1.3,.8,1.3); playBellSound(); showToast('BELL EVENT',false,900);
+  bell.scale.set(1.3,.8,1.3); playBellSound(); showToast(copy('종 이벤트','BELL EVENT'),false,900);
 }
 
 function playBellSound() {
@@ -482,7 +551,7 @@ function updateSubject(s:Subject,dt:number) {
   if(dir.lengthSq()) s.root.rotation.y=THREE.MathUtils.lerp(s.root.rotation.y,Math.atan2(dir.x,dir.z),Math.min(1,dt*4));
   const gait=Math.sin(roundTime*s.speed*5+s.id)*.1*moveFactor;
   s.body.rotation.z=gait; s.leftArm.rotation.x=gait*2; s.rightArm.rotation.x=-gait*2;
-  const inCenter=Math.hypot(s.root.position.x,s.root.position.z)<5.6;
+  const inCenter=Math.hypot(s.root.position.x,s.root.position.z)<centerTriggerRadius;
   if(inCenter&&!s.lastCenterInside) trigger(s,'centerSpin'); s.lastCenterInside=inCenter;
   if(s.action) animateAction(s,dt);
 }
@@ -572,7 +641,7 @@ function moveTouchPointer(event:PointerEvent) {
       const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);right.y=0;right.normalize();
       const forward=mobileTarget.clone().sub(camera.position);forward.y=0;forward.normalize();
       mobileTarget.addScaledVector(right,-delta.x*panScale).addScaledVector(forward,delta.y*panScale);
-      mobileTarget.x=THREE.MathUtils.clamp(mobileTarget.x,-22,22);mobileTarget.z=THREE.MathUtils.clamp(mobileTarget.z,-22,22);
+      const panLimit=arenaHalf*.76;mobileTarget.x=THREE.MathUtils.clamp(mobileTarget.x,-panLimit,panLimit);mobileTarget.z=THREE.MathUtils.clamp(mobileTarget.z,-panLimit,panLimit);
     }
     if(previousGestureDistance>0) mobileSpherical.radius=THREE.MathUtils.clamp(mobileSpherical.radius*previousGestureDistance/distance,15,50);
     previousGestureCenter.copy(center);previousGestureDistance=distance;
@@ -605,7 +674,7 @@ function updateCamera(dt:number) {
   if(keys.has('KeyW'))move.add(forward);if(keys.has('KeyS'))move.sub(forward);if(keys.has('KeyD'))move.add(right);if(keys.has('KeyA'))move.sub(right);
   if(keys.has('KeyE'))move.y++;if(keys.has('KeyQ'))move.y--;
   if(move.lengthSq()) move.normalize().multiplyScalar((keys.has('ShiftLeft')?18:8.5)*dt);
-  camera.position.add(move); camera.position.x=THREE.MathUtils.clamp(camera.position.x,-31,31); camera.position.z=THREE.MathUtils.clamp(camera.position.z,-31,31); camera.position.y=THREE.MathUtils.clamp(camera.position.y,3,28);
+  camera.position.add(move);camera.position.x=THREE.MathUtils.clamp(camera.position.x,-arenaHalf-2,arenaHalf+2);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-arenaHalf-2,arenaHalf+2);camera.position.y=THREE.MathUtils.clamp(camera.position.y,3,Math.max(16,arenaSize*.48));
 }
 
 function updateTargeting() {
@@ -618,25 +687,26 @@ function updateTargeting() {
   hovered=hit && hit.distance<45 ? subjects[hit.object.userData.subjectId as number] : null;
   activeSubjects.forEach(s=>s.marker.material.opacity=hovered===s?1:0);
   document.querySelector('#crosshair')!.classList.toggle('locked',!!hovered);
-  const label=document.querySelector('#target-label')!; label.textContent=hovered?`SUBJECT ${String(hovered.id+1).padStart(2,'0')}`:''; label.classList.toggle('show',!!hovered);
+  const label=document.querySelector('#target-label')!; label.textContent=hovered?hovered.name:''; label.classList.toggle('show',!!hovered);
 }
 
 function accuse(subject=hovered) {
   if(!playing||paused||!subject)return;
+  if(subject.inspected){showToast(copy(`${subject.name}은(는) 이미 확인했습니다.`,`${subject.name} WAS ALREADY INSPECTED.`),true,1200);return;}
   if(subject.id===oddId){endRound(true);return;}
-  attempts--; updateAttempts(); showToast(`SUBJECT ${String(subject.id+1).padStart(2,'0')} CLEARED · ${attempts} CHANCE${attempts===1?'':'S'} LEFT`,true,1600);
+  attempts--;subject.inspected=true;subject.inspectedSprite.material.opacity=1;updateAttempts();showToast(copy(`${subject.name} 확인 완료 · 기회 ${attempts}번 남음`,`${subject.name} INSPECTED · ${attempts} CHANCE${attempts===1?'':'S'} LEFT`),true,1600);
   subject.marker.material.color.set(0xe65b47);
   if(touchMode)selectSubject(null);
   if(attempts<=0) endRound(false);
 }
 
-function updateAttempts(){const el=document.querySelector('#attempts')!;el.innerHTML='';for(let i=0;i<3;i++){const bar=document.createElement('i');bar.className=`attempt${i>=attempts?' lost':''}`;el.appendChild(bar)}el.setAttribute('aria-label',`${attempts} attempts remaining`)}
+function updateAttempts(){const el=document.querySelector('#attempts')!;el.innerHTML='';for(let i=0;i<3;i++){const bar=document.createElement('i');bar.className=`attempt${i>=attempts?' lost':''}`;el.appendChild(bar)}el.setAttribute('aria-label',copy(`고발 기회 ${attempts}번 남음`,`${attempts} attempts remaining`))}
 let toastTimeout=0;
 function showToast(message:string,bad=false,duration=1200){const el=document.querySelector('#toast')!;el.textContent=message;el.className=`toast show${bad?' bad':''}`;clearTimeout(toastTimeout);toastTimeout=window.setTimeout(()=>el.className='toast',duration)}
 
 function setPaused(value:boolean) {
   if(!playing||paused===value)return;
-  paused=value;keys.clear();cancelTouchPointers();
+  paused=value;keys.clear();cancelTouchPointers();setAltCursorMode(false);
   const screen=document.querySelector<HTMLElement>('#pause-screen')!;screen.classList.toggle('open',paused);screen.setAttribute('aria-hidden',String(!paused));
   document.body.classList.toggle('paused',paused);
   if(paused&&document.pointerLockElement===canvas)document.exitPointerLock();
@@ -645,7 +715,7 @@ function setPaused(value:boolean) {
 
 function updateSoundButtons() {
   for(const button of document.querySelectorAll<HTMLButtonElement>('#sound-toggle,#pause-sound-toggle')) {
-    button.textContent=soundEnabled?'SOUND ON':'SOUND OFF';button.classList.toggle('muted',!soundEnabled);button.setAttribute('aria-pressed',String(soundEnabled));button.setAttribute('aria-label',soundEnabled?'Turn sound off':'Turn sound on');
+    button.textContent=soundEnabled?copy('소리 켜짐','SOUND ON'):copy('소리 꺼짐','SOUND OFF');button.classList.toggle('muted',!soundEnabled);button.setAttribute('aria-pressed',String(soundEnabled));button.setAttribute('aria-label',soundEnabled?copy('소리 끄기','Turn sound off'):copy('소리 켜기','Turn sound on'));
   }
 }
 
@@ -658,14 +728,31 @@ function requestGamePointerLock() {
   } catch { /* Pointer Lock can be unavailable in embedded browser previews. */ }
 }
 
-function startRound(){configureRound();playing=true;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint('ONE FINGER · LOOK AROUND')}else{camera.fov=62;camera.updateProjectionMatrix();camera.position.set(0,13,24);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
-function endRound(success:boolean){playing=false;paused=false;pointerLockAcquired=false;setFollowSubject(null,false);document.body.classList.remove('round-active','paused');setRuleNotesOpen(false);document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;document.querySelector('#result-kicker')!.textContent=success?'ANOMALY CONFIRMED':'OBSERVATION TERMINATED';document.querySelector('#result-title')!.textContent=success?'YOU FOUND IT.':'CASE FAILED.';document.querySelector('#reveal-rule')!.textContent=targetRule.label;document.querySelector('#reveal-npc')!.textContent=`SUBJECT ${String(oddId+1).padStart(2,'0')}`}
+function setAltCursorMode(value:boolean) {
+  if(touchMode||!playing||paused)value=false;
+  if(altCursorMode===value)return;
+  altCursorMode=value;keys.clear();document.body.classList.toggle('cursor-free',value);
+  if(value){pointerLockAcquired=false;if(document.pointerLockElement===canvas)document.exitPointerLock();}
+  else if(playing&&!paused)requestGamePointerLock();
+}
+
+function startRound(){configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint(copy('한 손가락 · 둘러보기','ONE FINGER · LOOK AROUND'))}else{camera.fov=62;camera.updateProjectionMatrix();camera.position.set(0,Math.max(8,arenaSize*.22),arenaHalf*.82);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
+
+function updateResultCopy(){
+  const success=roundResult==='success';
+  document.querySelector('#result-kicker')!.textContent=success?copy('이상 행동 확인','ANOMALY CONFIRMED'):copy('관찰 종료','OBSERVATION TERMINATED');
+  document.querySelector('#result-title')!.textContent=success?copy('찾았습니다.','YOU FOUND IT.'):copy('추리에 실패했습니다.','CASE FAILED.');
+  document.querySelector('#reveal-rule')!.textContent=RULE_LABELS[targetRule.id][language];
+  document.querySelector('#reveal-npc')!.textContent=subjects[oddId].name;
+}
+
+function endRound(success:boolean){playing=false;paused=false;roundResult=success?'success':'fail';pointerLockAcquired=false;altCursorMode=false;setFollowSubject(null,false);document.body.classList.remove('round-active','paused','cursor-free');setRuleNotesOpen(false);document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);if(document.pointerLockElement===canvas)document.exitPointerLock();subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;updateResultCopy()}
 
 function returnToStartScreen(){
-  playing=false;paused=false;pointerLockAcquired=false;keys.clear();cancelTouchPointers();setFollowSubject(null,false);selectSubject(null);
+  playing=false;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;keys.clear();cancelTouchPointers();setFollowSubject(null,false);selectSubject(null);
   mobileHint.textContent='';mobileHint.classList.remove('show');subjects.forEach(subject=>subject.marker.material.opacity=0);
   document.querySelector('#crosshair')!.classList.remove('locked');const targetLabel=document.querySelector<HTMLElement>('#target-label')!;targetLabel.textContent='';targetLabel.classList.remove('show');
-  document.body.classList.remove('round-active','paused','selection-active');
+  document.body.classList.remove('round-active','paused','selection-active','cursor-free');
   setRuleNotesOpen(false);
   document.querySelector('#pause-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.setAttribute('aria-hidden','true');
   document.querySelector('#end-screen')!.classList.remove('open');controlsScreen.classList.remove('open');controlsScreen.setAttribute('aria-hidden','true');
@@ -678,12 +765,12 @@ document.querySelector('#play-button')!.addEventListener('click',requestStartRou
 document.querySelector('#replay-button')!.addEventListener('click',startRound);
 participantButtons.forEach(button=>button.addEventListener('click',()=>{
   const count=Number(button.dataset.participantCount);
-  if(count===6||count===9||count===12)setParticipantCount(count);
+  if(count===6||count===9||count===12||count===24)setParticipantCount(count);
 }));
 ruleNoteRows.forEach(row=>row.addEventListener('click',()=>cycleRuleNote(row.dataset.ruleNote as RuleId)));
 document.querySelector('#rule-notes-close')!.addEventListener('click',()=>setRuleNotesOpen(false));
 ruleNotesToggle.addEventListener('click',()=>setRuleNotesOpen(true));
-canvas.addEventListener('click',event=>{if(event.button!==0||performance.now()<suppressAccusationUntil||touchMode||!playing)return;if(document.pointerLockElement!==canvas)requestGamePointerLock();else accuse()});
+canvas.addEventListener('click',event=>{if(event.button!==0||performance.now()<suppressAccusationUntil||touchMode||!playing||altCursorMode)return;if(document.pointerLockElement!==canvas)requestGamePointerLock();else accuse()});
 canvas.addEventListener('contextmenu',event=>event.preventDefault());
 canvas.addEventListener('pointerdown',event=>{if(!touchMode&&event.button===2){event.preventDefault();suppressAccusationUntil=performance.now()+400;if(playing&&!paused&&hovered)cycleSubjectMark(hovered)}});
 canvas.addEventListener('pointerdown',beginTouchPointer);
@@ -700,13 +787,14 @@ document.querySelector('#view-controls-button')!.addEventListener('click',()=>op
 document.querySelector('#end-observation-button')!.addEventListener('click',returnToStartScreen);
 controlsCloseButton.addEventListener('click',closeControls);
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
+languageToggle.addEventListener('click',toggleLanguage);
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
-addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if(e.code==='KeyN'&&playing&&!paused&&!e.repeat){e.preventDefault();setRuleNotesOpen(!ruleNotes.classList.contains('open'));return}const noteIndex=['Digit1','Digit2','Digit3','Digit4','Digit5'].indexOf(e.code);if(noteIndex>=0&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(true);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}if(e.code==='KeyN'&&playing&&!paused&&!e.repeat){e.preventDefault();setRuleNotesOpen(!ruleNotes.classList.contains('open'));return}const noteIndex=['Digit1','Digit2','Digit3','Digit4','Digit5'].indexOf(e.code);if(noteIndex>=0&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='AltLeft'||e.code==='AltRight')setAltCursorMode(false)});
 addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault();adjustDesktopZoom(Math.sign(e.deltaY))}},{passive:false});
-document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas){pointerLockAcquired=true;return}if(playing&&!paused&&pointerLockAcquired){pointerLockAcquired=false;setPaused(true)}});
+document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas){pointerLockAcquired=true;return}if(altCursorMode){pointerLockAcquired=false;return}if(playing&&!paused&&pointerLockAcquired){pointerLockAcquired=false;setPaused(true)}});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode)camera.fov=innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 
-setParticipantCount(participantCount);
+applyLanguage();
 const clock=new THREE.Clock(); let proximityTimer=0;
 function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(playing&&!paused){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode)applyMobileCamera();else updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
 frame();
