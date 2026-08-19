@@ -11,7 +11,7 @@
       <canvas id="game"></canvas>
       <div class="noise"></div>
       <header class="hud top-hud">
-        <div class="brand"><b>THE ODD ONE</b><span data-ko="행동 관찰 실험 // 01" data-en="OBSERVATION TEST // 01">행동 관찰 실험 // 01</span></div>
+        <div class="brand"><b>THE ODD ONE</b><span data-ko="관찰 기록 01" data-en="FIELD LOG 01">관찰 기록 01</span></div>
         <div class="top-actions">
           <button id="language-toggle" class="language-toggle" aria-label="Switch to English">EN</button>
           <button id="sound-toggle" class="sound-toggle" aria-pressed="true" aria-label="소리 끄기">소리 켜짐</button>
@@ -22,10 +22,10 @@
         <span data-ko="남은 고발" data-en="ACCUSATIONS">남은 고발</span>
         <div id="attempts" class="attempts" aria-label="3 attempts remaining"></div>
       </aside>
-      <button id="rule-notes-toggle" class="hud rule-notes-toggle" aria-controls="rule-notes" aria-expanded="false"><span data-ko="규칙 메모" data-en="MISSION NOTES">규칙 메모</span> <b>5</b></button>
+      <button id="rule-notes-toggle" class="hud rule-notes-toggle" aria-controls="rule-notes" aria-expanded="false"><span data-ko="관찰 노트" data-en="FIELD NOTES">관찰 노트</span> <b>5</b></button>
       <aside id="rule-notes" class="hud rule-notes open" aria-label="Mission rule checklist" aria-hidden="true">
         <header>
-          <div><span data-ko="미션 메모" data-en="MISSION NOTES">미션 메모</span><b data-ko="규칙 체크리스트" data-en="RULE CHECKLIST">규칙 체크리스트</b></div>
+          <div><span data-ko="추리 기록" data-en="DEDUCTION LOG">추리 기록</span><b data-ko="관찰 노트" data-en="FIELD NOTES">관찰 노트</b></div>
           <button id="rule-notes-close" aria-label="규칙 메모 접기">×</button>
         </header>
         <div class="rule-note-list">
@@ -43,24 +43,24 @@
       <button id="camera-reset" class="mobile-ui camera-reset" aria-label="Reset camera">⌂</button>
       <div id="mobile-hint" class="mobile-ui mobile-hint" aria-live="polite"></div>
       <section id="mobile-selection" class="mobile-ui mobile-selection" aria-live="polite">
-        <div class="subject-info"><span data-ko="선택한 참가자" data-en="SELECTED NPC">선택한 참가자</span><b id="mobile-subject">영철</b></div>
+        <div class="subject-info"><span data-ko="선택한 사람" data-en="SELECTED PERSON">선택한 사람</span><b id="mobile-subject">영철</b></div>
         <div class="mark-controls" aria-label="Selected subject actions">
           <button id="mark-question" aria-label="더 관찰할 참가자로 표시" aria-pressed="false"><b>?</b><small data-ko="관찰" data-en="WATCH">관찰</small></button>
           <button id="mark-clear" aria-label="제외할 참가자로 표시" aria-pressed="false"><b>✓</b><small data-ko="제외" data-en="CLEAR">제외</small></button>
           <button id="mobile-follow" aria-label="선택한 참가자 따라가기" aria-pressed="false"><b>◎</b><small data-ko="따라가기" data-en="FOLLOW">따라가기</small></button>
         </div>
-        <button id="mobile-accuse"><span data-ko="고발하기" data-en="ACCUSE">고발하기</span> <b>→</b></button>
+        <button id="mobile-accuse"><span data-ko="이 사람 지목하기" data-en="ACCUSE THIS PERSON">이 사람 지목하기</span> <b>→</b></button>
       </section>
       <div class="controls hud">
         <span><kbd>WASD</kbd> <i data-ko="이동" data-en="MOVE">이동</i></span><span><kbd>Q E</kbd> <i data-ko="고도" data-en="ALTITUDE">고도</i></span>
         <span><kbd>SHIFT</kbd> <i data-ko="가속" data-en="BOOST">가속</i></span><span><kbd>WHEEL</kbd> <i data-ko="줌" data-en="ZOOM">줌</i></span><span><kbd>F</kbd> <i data-ko="따라가기" data-en="FOLLOW">따라가기</i></span><span><kbd>ALT</kbd> <i data-ko="커서" data-en="CURSOR">커서</i></span><span><kbd>RMB</kbd> <i data-ko="표시" data-en="MARK">표시</i></span><span><kbd>CLICK</kbd> <i data-ko="고발" data-en="ACCUSE">고발</i></span>
       </div>
       <section id="start-screen" class="screen open">
-        <div class="eyebrow" data-ko="행동 이상 관찰 실험" data-en="BEHAVIORAL ANOMALY STUDY">행동 이상 관찰 실험</div>
+        <div class="eyebrow" data-ko="관찰 추리 게임" data-en="AN OBSERVATION MYSTERY">관찰 추리 게임</div>
         <h1>FIND THE<br/><em>ODD ONE.</em></h1>
-        <p><span id="majority-copy">5명이 하나의 숨은 규칙을 따릅니다.</span><br/><span data-ko="단 한 명만 반대로 행동합니다." data-en="One person does the opposite.">단 한 명만 반대로 행동합니다.</span></p>
+        <p><span id="majority-copy">6명 중 단 한 명만 다르게 행동합니다.</span><br/><span data-ko="행동의 원인을 찾아 그 사람을 지목하세요." data-en="Read the pattern, then name the person who breaks it.">행동의 원인을 찾아 그 사람을 지목하세요.</span></p>
         <div class="participant-selector" role="radiogroup" aria-label="Number of participating subjects">
-          <span data-ko="참가 인원 선택" data-en="CHOOSE NPC COUNT">참가 인원 선택</span>
+          <span data-ko="난이도 · 참가 인원" data-en="DIFFICULTY · PEOPLE">난이도 · 참가 인원</span>
           <div>
             <button class="active" data-participant-count="6" role="radio" aria-checked="true">6 <small data-ko="쉬움" data-en="EASY">쉬움</small></button>
             <button data-participant-count="9" role="radio" aria-checked="false">9 <small data-ko="보통" data-en="MEDIUM">보통</small></button>
@@ -69,8 +69,8 @@
           </div>
         </div>
         <div class="rule-strip"><span id="subject-count-summary">참가자 6명</span><span data-ko="정답 후보 4개" data-en="4 TARGET RULES">정답 후보 4개</span><span data-ko="기회 3번" data-en="3 CHANCES">기회 3번</span></div>
-        <button id="play-button" class="primary"><span data-ko="관찰 시작" data-en="BEGIN OBSERVATION">관찰 시작</span> <b>→</b></button>
-        <small id="device-note" data-ko="헤드폰 권장 · 데스크톱과 모바일 지원" data-en="HEADPHONES RECOMMENDED · DESKTOP & MOBILE">헤드폰 권장 · 데스크톱과 모바일 지원</small>
+        <button id="play-button" class="primary"><span data-ko="게임 시작" data-en="START GAME">게임 시작</span> <b>→</b></button>
+        <small id="device-note" data-ko="소리를 켜면 종 이벤트를 더 쉽게 알아챌 수 있어요" data-en="TURN UP THE SOUND TO CATCH THE BELL EVENT">소리를 켜면 종 이벤트를 더 쉽게 알아챌 수 있어요</small>
       </section>
       <section id="pause-screen" class="screen pause-screen" aria-hidden="true">
         <div class="eyebrow" data-ko="관찰 일시정지" data-en="OBSERVATION SUSPENDED">관찰 일시정지</div>

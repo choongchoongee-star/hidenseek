@@ -429,7 +429,7 @@ function cycleSubjectMark(subject:Subject) {
 
 function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
   participantCount=count;
-  majorityCopy.textContent=copy(`${count-1}명이 하나의 숨은 규칙을 따릅니다.`,`${count-1} NPCs follow one hidden rule.`);
+  majorityCopy.textContent=copy(`${count}명 중 단 한 명만 다르게 행동합니다.`,`Only one of ${count} people behaves differently.`);
   subjectCountSummary.textContent=copy(`참가자 ${count}명`,`${count} NPCS`);
   participantButtons.forEach(button=>{
     const active=Number(button.dataset.participantCount)===count;
@@ -455,7 +455,7 @@ function cycleRuleNote(ruleId:RuleId) {
 }
 
 function resetRuleNotes() {
-  RULE_NOTE_ORDER.forEach(ruleId=>{ruleNoteMarks[ruleId]=null;updateRuleNote(ruleId);});setRuleNotesOpen(true);
+  RULE_NOTE_ORDER.forEach(ruleId=>{ruleNoteMarks[ruleId]=null;updateRuleNote(ruleId);});setRuleNotesOpen(false);
 }
 
 function randomWaypoint(out: THREE.Vector3) {
@@ -731,9 +731,11 @@ function setPaused(value:boolean) {
 }
 
 function updateSoundButtons() {
-  for(const button of document.querySelectorAll<HTMLButtonElement>('#sound-toggle,#pause-sound-toggle')) {
-    button.textContent=soundEnabled?copy('소리 켜짐','SOUND ON'):copy('소리 꺼짐','SOUND OFF');button.classList.toggle('muted',!soundEnabled);button.setAttribute('aria-pressed',String(soundEnabled));button.setAttribute('aria-label',soundEnabled?copy('소리 끄기','Turn sound off'):copy('소리 켜기','Turn sound on'));
-  }
+  const hudButton=document.querySelector<HTMLButtonElement>('#sound-toggle')!;
+  const pauseButton=document.querySelector<HTMLButtonElement>('#pause-sound-toggle')!;
+  hudButton.textContent=soundEnabled?copy('소리','SOUND'):copy('음소거','MUTED');
+  pauseButton.textContent=soundEnabled?copy('소리 켜짐','SOUND ON'):copy('소리 꺼짐','SOUND OFF');
+  for(const button of [hudButton,pauseButton]) {button.classList.toggle('muted',!soundEnabled);button.setAttribute('aria-pressed',String(soundEnabled));button.setAttribute('aria-label',soundEnabled?copy('소리 끄기','Turn sound off'):copy('소리 켜기','Turn sound on'));}
 }
 
 function toggleSound(){soundEnabled=!soundEnabled;updateSoundButtons()}
