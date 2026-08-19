@@ -227,6 +227,8 @@ let playing = false;
 let paused = false;
 let soundEnabled = true;
 let pointerLockAcquired = false;
+let pointerLockRequestId = 0;
+let pointerLockReleaseTimers: number[] = [];
 let altCursorMode = false;
 let language:Language=readLanguage();
 let roundResult:'success'|'fail'|null=null;
@@ -822,12 +824,32 @@ function setSystemCursorOverride(visible:boolean) {
   }
 }
 
+function pointerLockAllowed() {
+  return !touchMode&&playing&&!paused&&!altCursorMode&&!document.hidden&&document.hasFocus();
+}
+
+function clearPointerLockReleaseTimers() {
+  pointerLockReleaseTimers.forEach(timer=>clearTimeout(timer));
+  pointerLockReleaseTimers=[];
+}
+
+function releasePointerLockNow() {
+  setSystemCursorOverride(true);
+  if(document.pointerLockElement) {
+    try { document.exitPointerLock(); } catch { /* The document may already be leaving Pointer Lock. */ }
+  }
+}
+
 function exitGamePointerLock() {
+  pointerLockRequestId++;
   pointerLockAcquired=false;
-  if(document.pointerLockElement)document.exitPointerLock();
-  requestAnimationFrame(()=>{
-    if((!playing||paused||altCursorMode)&&document.pointerLockElement)document.exitPointerLock();
-  });
+  clearPointerLockReleaseTimers();
+  releasePointerLockNow();
+  for(const delay of [0,50,150,400,1000]) {
+    pointerLockReleaseTimers.push(window.setTimeout(()=>{
+      if(!pointerLockAllowed())releasePointerLockNow();
+    },delay));
+  }
 }
 
 function restoreSystemCursor() {
@@ -835,13 +857,27 @@ function restoreSystemCursor() {
   setSystemCursorOverride(true);exitGamePointerLock();
 }
 
+function handleBrowserFocusLoss() {
+  if(touchMode)return;
+  if(playing&&!paused)setPaused(true);
+  else restoreSystemCursor();
+}
+
 function requestGamePointerLock() {
-  if(touchMode||!playing||paused||altCursorMode)return;
+  if(!pointerLockAllowed())return;
+  clearPointerLockReleaseTimers();
+  const requestId=++pointerLockRequestId;
   setSystemCursorOverride(false);
   try {
     const result=canvas.requestPointerLock();
-    if(result instanceof Promise)result.catch(()=>undefined);
-  } catch { /* Pointer Lock can be unavailable in embedded browser previews. */ }
+    if(result instanceof Promise)result.then(()=>{
+      if(requestId!==pointerLockRequestId||!pointerLockAllowed())exitGamePointerLock();
+    }).catch(()=>{
+      if(requestId===pointerLockRequestId)setSystemCursorOverride(true);
+    });
+  } catch {
+    if(requestId===pointerLockRequestId)setSystemCursorOverride(true);
+  }
 }
 
 function setAltCursorMode(value:boolean) {
@@ -908,10 +944,22 @@ languageToggle.addEventListener('click',toggleLanguage);
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
 addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(!altCursorMode);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}const noteIndex=['Digit1','Digit2','Digit3','Digit4','Digit5'].indexOf(e.code);if(noteIndex>=0&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault();adjustDesktopZoom(Math.sign(e.deltaY))}},{passive:false});
-document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas){if(!playing||paused||altCursorMode){exitGamePointerLock();setSystemCursorOverride(true);return}pointerLockAcquired=true;return}if(altCursorMode){pointerLockAcquired=false;return}if(playing&&!paused&&pointerLockAcquired){pointerLockAcquired=false;setPaused(true)}});
+document.addEventListener('pointerlockchange',()=>{
+  if(document.pointerLockElement===canvas) {
+    if(!pointerLockAllowed()){exitGamePointerLock();return}
+    pointerLockAcquired=true;return;
+  }
+  const lostGamePointerLock=pointerLockAcquired;pointerLockAcquired=false;
+  if(playing&&!paused&&!altCursorMode&&lostGamePointerLock)setPaused(true);
+});
+document.addEventListener('pointerlockerror',()=>{pointerLockAcquired=false;setSystemCursorOverride(true)});
+addEventListener('blur',handleBrowserFocusLoss);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)handleBrowserFocusLoss()});
+addEventListener('pagehide',restoreSystemCursor);
+addEventListener('beforeunload',restoreSystemCursor);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode)camera.fov=innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 
 applyLanguage();
 const clock=new THREE.Clock(); let proximityTimer=0;
-function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(playing&&!paused){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode)applyMobileCamera();else updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
+function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const dt=Math.min(clock.getDelta(),.05);if(playing&&!paused){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode)applyMobileCamera();else updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
 frame();
