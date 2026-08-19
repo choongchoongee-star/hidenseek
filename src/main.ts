@@ -287,13 +287,13 @@ function toggleLanguage(){
 }
 
 function readControlsAcknowledged() {
-  try { return localStorage.getItem('the-odd-one-controls-v1')==='seen'; }
+  try { return localStorage.getItem('the-odd-one-controls-v2')==='seen'; }
   catch { return false; }
 }
 
 function rememberControlsAcknowledged() {
   controlsAcknowledged=true;
-  try { localStorage.setItem('the-odd-one-controls-v1','seen'); }
+  try { localStorage.setItem('the-odd-one-controls-v2','seen'); }
   catch { /* The guide still works when storage is unavailable. */ }
 }
 
