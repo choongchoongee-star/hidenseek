@@ -48,6 +48,12 @@ button:focus-visible { outline: 2px solid var(--yellow-soft); outline-offset: 3p
 .controls span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .controls kbd { min-width: 0; height: auto; padding: 0; border: 0; background: transparent; color: var(--yellow); font: 500 10px 'DM Mono'; letter-spacing: .04em; }
 .controls i { color: rgba(244,241,232,.7); font: 500 10px 'Noto Sans KR', sans-serif; font-style: normal; letter-spacing: 0; }
+.speed-controls { right: 24px; bottom: 14px; display: flex; align-items: center; gap: 2px; padding: 4px; background: rgba(13,14,12,.82); backdrop-filter: blur(10px); box-shadow: 0 8px 24px rgba(0,0,0,.2); opacity: 0; visibility: hidden; transform: translateY(8px); pointer-events: auto; transition: opacity .2s, transform .2s, visibility .2s, bottom .28s ease; }
+.round-active:not(.paused) .speed-controls { opacity: 1; visibility: visible; transform: translateY(0); }
+.speed-controls > span { padding: 0 7px; color: rgba(244,241,232,.58); font: 500 10px 'Noto Sans KR', sans-serif; letter-spacing: .04em; }
+.speed-controls button { min-width: 44px; height: 38px; padding: 0 9px; border: 0; background: transparent; color: rgba(244,241,232,.62); font: 600 11px 'DM Mono', monospace; cursor: pointer; }
+.speed-controls button:hover { color: #fff; background: rgba(255,255,255,.08); }
+.speed-controls button.active { background: var(--yellow); color: var(--ink); }
 
 /* Field notes */
 .rule-notes-toggle { z-index: 7; left: 24px; top: 84px; min-height: 44px; padding: 0 10px 0 14px; border: 0; border-left: 3px solid var(--yellow); background: rgba(17,18,15,.86); color: #f4f1e8; cursor: pointer; backdrop-filter: blur(12px); opacity: 0; visibility: hidden; transform: translateX(-10px); transition: .2s; }
@@ -194,6 +200,10 @@ kbd.wide-key { min-width: 80px; }
 /* Touch gameplay */
 .touch-mode #game { touch-action: none; }
 .touch-mode .crosshair, .touch-mode .target-label, .touch-mode .controls { display: none; }
+.touch-mode .speed-controls { right: max(12px,env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); }
+.touch-mode.selection-active .speed-controls { bottom: calc(178px + env(safe-area-inset-bottom)); }
+.touch-mode .speed-controls > span { display: none; }
+.touch-mode .speed-controls button { min-width: 48px; height: 44px; }
 .touch-mode .mobile-ui { display: block; }
 .touch-mode .desktop-guide { display: none; }
 .touch-mode .mobile-guide { display: grid; }

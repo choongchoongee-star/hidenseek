@@ -8,6 +8,7 @@ type SubjectMark = '?' | '✓' | null;
 type RuleNoteMark = '?' | '✓' | 'strike' | null;
 type ControlsOrigin = 'start' | 'pause';
 type Language = 'ko' | 'en';
+type GameSpeed = 1 | 1.5 | 2;
 
 interface LocalizedCopy { ko: string; en: string; }
 interface RuleDefinition { id: RuleId; action: ActionName; label: LocalizedCopy; note: LocalizedCopy; stimulus?: 'red'|'blue'|'yellow'|'hat'; }
@@ -241,6 +242,7 @@ let controlsOrigin: ControlsOrigin = 'start';
 let controlsAcknowledged = readControlsAcknowledged();
 let roundTime = 0;
 let bellTimer = 8;
+let gameSpeed:GameSpeed = 1;
 let yaw = 0;
 let pitch = -.28;
 let hovered: Subject | null = null;
@@ -276,6 +278,8 @@ const ruleNotes=document.querySelector<HTMLElement>('#rule-notes')!;
 const ruleNotesToggle=document.querySelector<HTMLButtonElement>('#rule-notes-toggle')!;
 const ruleNoteRows=[...document.querySelectorAll<HTMLButtonElement>('[data-rule-note]')];
 const languageToggle=document.querySelector<HTMLButtonElement>('#language-toggle')!;
+const speedControls=document.querySelector<HTMLElement>('#speed-controls')!;
+const speedButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-game-speed]')];
 
 function copy(ko:string,en:string){return language==='ko'?ko:en;}
 
@@ -289,12 +293,22 @@ function applyLanguage() {
   document.querySelectorAll<HTMLElement>('[data-ko][data-en]').forEach(element=>{element.textContent=element.dataset[language]??'';});
   languageToggle.textContent=language==='ko'?'EN':'한국어';
   languageToggle.setAttribute('aria-label',language==='ko'?'Switch to English':'한국어로 전환');
+  speedControls.setAttribute('aria-label',copy('게임 속도','Game speed'));
   subjects.forEach(subject=>{subject.inspectedSprite.material.map=inspectedTextures[language];subject.inspectedSprite.material.needsUpdate=true;});
   setParticipantCount(participantCount);updateSoundButtons();updateAttempts();updateFollowButton();
   renderRuleNotes();
   RULE_NOTE_ORDER.forEach(updateRuleNote);
   if(controlsScreen.classList.contains('open'))updateControlsCloseButton();
   if(roundResult)updateResultCopy();
+}
+
+function setGameSpeed(speed:GameSpeed) {
+  gameSpeed=speed;
+  speedButtons.forEach(button=>{
+    const selected=Number(button.dataset.gameSpeed)===speed;
+    button.classList.toggle('active',selected);
+    button.setAttribute('aria-pressed',String(selected));
+  });
 }
 
 function toggleLanguage(){
@@ -955,6 +969,10 @@ document.querySelector('#end-observation-button')!.addEventListener('click',retu
 controlsCloseButton.addEventListener('click',closeControls);
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
 languageToggle.addEventListener('click',toggleLanguage);
+speedButtons.forEach(button=>button.addEventListener('click',()=>{
+  const speed=Number(button.dataset.gameSpeed);
+  if(speed===1||speed===1.5||speed===2)setGameSpeed(speed);
+}));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
 addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(!altCursorMode);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}const noteIndex=['Digit1','Digit2','Digit3','Digit4'].indexOf(e.code);if(noteIndex>=0&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault();adjustDesktopZoom(Math.sign(e.deltaY))}},{passive:false});
@@ -975,5 +993,5 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode
 
 applyLanguage();
 const clock=new THREE.Clock(); let proximityTimer=0;
-function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const dt=Math.min(clock.getDelta(),.05);if(playing&&!paused){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode&&followedSubject)applyMobileCamera();else if(!touchMode)updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
+function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const realDt=Math.min(clock.getDelta(),.05);if(playing&&!paused){const simulationDt=realDt*gameSpeed;roundTime+=simulationDt;bellTimer-=simulationDt;bell.scale.lerp(new THREE.Vector3(1,1,1),simulationDt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,simulationDt));proximityTimer-=simulationDt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode&&followedSubject)applyMobileCamera();else if(!touchMode)updateCamera(realDt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
 frame();
