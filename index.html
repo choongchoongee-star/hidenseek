@@ -30,17 +30,16 @@
         </header>
         <div class="rule-note-list">
           <button class="rule-note" data-rule-note="redJump"><span class="note-index">1</span><i class="note-mark"></i><span class="note-copy"><b data-ko="빨강 점프" data-en="RED JUMP">빨강 점프</b><small data-ko="빨간 옷 근처 → 점프" data-en="Near a red shirt → JUMP">빨간 옷 근처 → 점프</small></span></button>
-          <button class="rule-note" data-rule-note="hatWave"><span class="note-index">2</span><i class="note-mark"></i><span class="note-copy"><b data-ko="모자 인사" data-en="HAT WAVE">모자 인사</b><small data-ko="모자 쓴 사람 근처 → 손 흔들기" data-en="Near a hat → WAVE">모자 쓴 사람 근처 → 손 흔들기</small></span></button>
-          <button class="rule-note" data-rule-note="centerSpin"><span class="note-index">3</span><i class="note-mark"></i><span class="note-copy"><b data-ko="중앙 회전" data-en="CENTER SPIN">중앙 회전</b><small data-ko="중앙 구역 진입 → 회전" data-en="Enter the center → SPIN">중앙 구역 진입 → 회전</small></span></button>
+          <button class="rule-note" data-rule-note="hatBow"><span class="note-index">2</span><i class="note-mark"></i><span class="note-copy"><b data-ko="모자에게 인사" data-en="HAT BOW">모자에게 인사</b><small data-ko="모자 쓴 사람 근처 → 허리 숙이기" data-en="Near a hat → BOW">모자 쓴 사람 근처 → 허리 숙이기</small></span></button>
+          <button class="rule-note" data-rule-note="centerClap"><span class="note-index">3</span><i class="note-mark"></i><span class="note-copy"><b data-ko="중앙 박수" data-en="CENTER CLAP">중앙 박수</b><small data-ko="중앙 구역 진입 → 박수" data-en="Enter the center → CLAP">중앙 구역 진입 → 박수</small></span></button>
           <button class="rule-note" data-rule-note="greetingWave"><span class="note-index">4</span><i class="note-mark"></i><span class="note-copy"><b data-ko="마주보기 인사" data-en="GREETING WAVE">마주보기 인사</b><small data-ko="서로 마주봄 → 둘 다 손 흔들기" data-en="Face each other → both WAVE">서로 마주봄 → 둘 다 손 흔들기</small></span></button>
-          <button class="rule-note bell-note" data-rule-note="bell"><span class="note-index">5</span><i class="note-mark"></i><span class="note-copy"><b data-ko="종 이벤트" data-en="BELL EVENT">종 이벤트</b><small data-ko="일부 참가자 강제 행동 · 정답 규칙 아님" data-en="Forces an action · NOT A TARGET">일부 참가자 강제 행동 · 정답 규칙 아님</small></span></button>
+          <button class="rule-note bell-note" data-rule-note="bell" aria-disabled="true" tabindex="-1"><span class="note-index">🔔</span><i class="note-mark"></i><span class="note-copy"><b data-ko="종 이벤트" data-en="BELL EVENT">종 이벤트</b><small data-ko="일부 참가자 강제 행동 · 정답 규칙 아님" data-en="Forces an action · NOT A TARGET">일부 참가자 강제 행동 · 정답 규칙 아님</small></span></button>
         </div>
-        <footer><span class="desktop-note-help" data-ko="1–5: ? → ✓ → 취소선 → 해제" data-en="1–5: ? → ✓ → STRIKE → CLEAR">1–5: ? → ✓ → 취소선 → 해제</span><span class="mobile-note-help" data-ko="누르기: ? → ✓ → 취소선 → 해제" data-en="TAP: ? → ✓ → STRIKE → CLEAR">누르기: ? → ✓ → 취소선 → 해제</span></footer>
+        <footer><span class="desktop-note-help" data-ko="1–4: ? → ✓ → 취소선 → 해제" data-en="1–4: ? → ✓ → STRIKE → CLEAR">1–4: ? → ✓ → 취소선 → 해제</span><span class="mobile-note-help" data-ko="행동 규칙 누르기: ? → ✓ → 취소선 → 해제" data-en="TAP BEHAVIOR RULES: ? → ✓ → STRIKE → CLEAR">행동 규칙 누르기: ? → ✓ → 취소선 → 해제</span></footer>
       </aside>
       <div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i><span></span></div>
       <div id="target-label" class="target-label"></div>
       <div id="toast" class="toast"></div>
-      <button id="camera-reset" class="mobile-ui camera-reset" aria-label="Reset camera">⌂</button>
       <div id="mobile-hint" class="mobile-ui mobile-hint" aria-live="polite"></div>
       <section id="mobile-selection" class="mobile-ui mobile-selection" aria-live="polite">
         <div class="subject-info"><span data-ko="선택한 사람" data-en="SELECTED PERSON">선택한 사람</span><b id="mobile-subject">영철</b></div>
@@ -145,7 +144,6 @@
             <div class="gesture-card"><b>? ✓</b><span data-ko="관찰 / 제외" data-en="WATCH / CLEAR">관찰 / 제외</span><p data-ko="가설을 메모" data-en="Record your theory">가설을 메모</p></div>
             <div class="gesture-card"><b>◉</b><span data-ko="따라가기" data-en="FOLLOW">따라가기</span><p data-ko="선택한 NPC 추적" data-en="Track the selected NPC">선택한 NPC 추적</p></div>
             <div class="gesture-card"><b>→</b><span data-ko="고발" data-en="ACCUSE">고발</span><p data-ko="선택한 NPC를 정답으로 지목" data-en="Commit your accusation">선택한 NPC를 정답으로 지목</p></div>
-            <div class="gesture-card"><b>⌂</b><span data-ko="초기화" data-en="RESET">초기화</span><p data-ko="추적 해제 후 전체 보기" data-en="Release follow and see all">추적 해제 후 전체 보기</p></div>
           </div>
           <button id="controls-close-button" class="primary">관찰 시작 <b>→</b></button>
           <small class="controls-footnote" data-ko="일시정지 화면에서 이 안내를 다시 열 수 있습니다" data-en="YOU CAN REOPEN THIS GUIDE FROM THE PAUSE SCREEN">일시정지 화면에서 이 안내를 다시 열 수 있습니다</small>

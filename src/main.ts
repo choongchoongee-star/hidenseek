@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import './style.css';
 
-type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatWave' | 'centerSpin' | 'edgeJump' | 'bellZoneWave' | 'lampJump' | 'greetingWave' | 'turnSpin';
+type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'centerClap' | 'edgeJump' | 'bellZoneCheer' | 'lampBow' | 'greetingWave' | 'turnSpin';
 type RuleNoteId = RuleId | 'bell';
-type ActionName = 'jump' | 'wave' | 'spin';
+type ActionName = 'jump' | 'wave' | 'spin' | 'bow' | 'clap' | 'cheer';
 type SubjectMark = '?' | '✓' | null;
 type RuleNoteMark = '?' | '✓' | 'strike' | null;
 type ControlsOrigin = 'start' | 'pause';
@@ -45,11 +45,11 @@ const RULES: RuleDefinition[] = [
   { id:'redJump', action:'jump', stimulus:'red', label:{ko:'빨강 점프',en:'RED JUMP'}, note:{ko:'빨간 옷 근처 → 점프',en:'Near a red shirt → JUMP'} },
   { id:'blueSpin', action:'spin', stimulus:'blue', label:{ko:'파랑 회전',en:'BLUE SPIN'}, note:{ko:'파란 옷 근처 → 회전',en:'Near a blue shirt → SPIN'} },
   { id:'yellowWave', action:'wave', stimulus:'yellow', label:{ko:'노랑 인사',en:'YELLOW WAVE'}, note:{ko:'노란 옷 근처 → 손 흔들기',en:'Near a yellow shirt → WAVE'} },
-  { id:'hatWave', action:'wave', stimulus:'hat', label:{ko:'모자 인사',en:'HAT WAVE'}, note:{ko:'모자 쓴 사람 근처 → 손 흔들기',en:'Near a hat → WAVE'} },
-  { id:'centerSpin', action:'spin', label:{ko:'중앙 회전',en:'CENTER SPIN'}, note:{ko:'중앙 구역 진입 → 회전',en:'Enter the center → SPIN'} },
+  { id:'hatBow', action:'bow', stimulus:'hat', label:{ko:'모자에게 인사',en:'HAT BOW'}, note:{ko:'모자 쓴 사람 근처 → 허리 숙이기',en:'Near a hat → BOW'} },
+  { id:'centerClap', action:'clap', label:{ko:'중앙 박수',en:'CENTER CLAP'}, note:{ko:'중앙 구역 진입 → 박수',en:'Enter the center → CLAP'} },
   { id:'edgeJump', action:'jump', label:{ko:'가장자리 점프',en:'EDGE JUMP'}, note:{ko:'맵 가장자리 진입 → 점프',en:'Enter the map edge → JUMP'} },
-  { id:'bellZoneWave', action:'wave', label:{ko:'종탑 인사',en:'BELL TOWER WAVE'}, note:{ko:'종탑 근처 진입 → 손 흔들기',en:'Approach the bell tower → WAVE'} },
-  { id:'lampJump', action:'jump', label:{ko:'조명 점프',en:'LAMP JUMP'}, note:{ko:'모서리 조명 근처 → 점프',en:'Approach a corner lamp → JUMP'} },
+  { id:'bellZoneCheer', action:'cheer', label:{ko:'종탑 만세',en:'BELL TOWER CHEER'}, note:{ko:'종탑 근처 진입 → 만세',en:'Approach the bell tower → CHEER'} },
+  { id:'lampBow', action:'bow', label:{ko:'조명에게 인사',en:'LAMP BOW'}, note:{ko:'모서리 조명 근처 → 허리 숙이기',en:'Approach a corner lamp → BOW'} },
   { id:'greetingWave', action:'wave', label:{ko:'마주보기 인사',en:'GREETING WAVE'}, note:{ko:'서로 마주봄 → 둘 다 손 흔들기',en:'Face each other → both WAVE'} },
   { id:'turnSpin', action:'spin', label:{ko:'방향 전환 회전',en:'TURN SPIN'}, note:{ko:'이동 목표 도착 → 회전',en:'Reach a waypoint → SPIN'} },
 ];
@@ -59,7 +59,7 @@ const ARENA_SIZES:Record<typeof PARTICIPANT_OPTIONS[number],number>={6:30,9:38,1
 let RULE_NOTE_ORDER:RuleNoteId[]=[...RULES.slice(0,4).map(rule=>rule.id),'bell'];
 const ruleNoteMarks={} as Record<RuleNoteId,RuleNoteMark>;
 [...RULES.map(rule=>rule.id),'bell' as const].forEach(ruleId=>ruleNoteMarks[ruleId]=null);
-const ACTION_LABELS:Record<ActionName,LocalizedCopy>={jump:{ko:'점프',en:'JUMP'},wave:{ko:'손 흔들기',en:'WAVE'},spin:{ko:'회전',en:'SPIN'}};
+const ACTION_LABELS:Record<ActionName,LocalizedCopy>={jump:{ko:'점프',en:'JUMP'},wave:{ko:'손 흔들기',en:'WAVE'},spin:{ko:'회전',en:'SPIN'},bow:{ko:'허리 숙이기',en:'BOW'},clap:{ko:'박수',en:'CLAP'},cheer:{ko:'만세',en:'CHEER'}};
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const touchMode = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).has('touch');
@@ -341,7 +341,7 @@ function subjectFocus(subject:Subject) {
   return subject.root.position.clone().add(new THREE.Vector3(0,2.3,0));
 }
 
-function resetMobileCamera() {
+function initializeMobileCamera() {
   setFollowSubject(null,false);
   mobileTarget.set(0,1.8,0);
   mobileSpherical.set(THREE.MathUtils.clamp(arenaSize*(innerHeight>innerWidth?.67:.6),18,42),1.06,0);
@@ -349,9 +349,9 @@ function resetMobileCamera() {
 }
 
 function applyMobileCamera() {
-  if(followedSubject)mobileTarget.copy(subjectFocus(followedSubject));
-  camera.position.copy(mobileTarget).add(new THREE.Vector3().setFromSpherical(mobileSpherical));
-  camera.lookAt(mobileTarget);
+  const target=followedSubject?subjectFocus(followedSubject):mobileTarget;
+  camera.position.copy(target).add(new THREE.Vector3().setFromSpherical(mobileSpherical));
+  camera.lookAt(target);
 }
 
 function setMobileHint(message:string) {
@@ -406,7 +406,7 @@ function setFollowSubject(subject:Subject|null,notify=true) {
   followedSubject=subject;
   if(subject) {
     const target=subjectFocus(subject);
-    if(touchMode)mobileTarget.copy(target);
+    if(touchMode)applyMobileCamera();
     else {
       desktopFollowSpherical.setFromVector3(camera.position.clone().sub(target));
       desktopFollowSpherical.radius=THREE.MathUtils.clamp(desktopFollowSpherical.radius,6,45);
@@ -415,7 +415,8 @@ function setFollowSubject(subject:Subject|null,notify=true) {
     }
     if(notify)showToast(copy(`${subject.name} 따라가는 중`,`FOLLOWING ${subject.name}`),false,1100);
   } else {
-    if(!touchMode){camera.rotation.order='YXZ';yaw=camera.rotation.y;pitch=camera.rotation.x;}
+    if(touchMode)applyMobileCamera();
+    else {camera.rotation.order='YXZ';yaw=camera.rotation.y;pitch=camera.rotation.x;}
     if(notify)showToast(copy('따라가기 해제','FOLLOW RELEASED'),false,900);
   }
   updateFollowButton();
@@ -464,7 +465,8 @@ function renderRuleNotes() {
   RULE_NOTE_ORDER=[...activeRules.map(rule=>rule.id),'bell'];
   ruleNoteRows.forEach((row,index)=>{
     const ruleId=RULE_NOTE_ORDER[index];row.dataset.ruleNote=ruleId;
-    const indexLabel=row.querySelector<HTMLElement>('.note-index')!;indexLabel.textContent=String(index+1);
+    const indexLabel=row.querySelector<HTMLElement>('.note-index')!;indexLabel.textContent=ruleId==='bell'?'🔔':String(index+1);
+    row.setAttribute('aria-disabled',String(ruleId==='bell'));row.tabIndex=ruleId==='bell'?-1:0;
     const title=row.querySelector<HTMLElement>('.note-copy b')!;
     const detail=row.querySelector<HTMLElement>('.note-copy small')!;
     if(ruleId==='bell') {
@@ -481,6 +483,10 @@ function renderRuleNotes() {
 
 function updateRuleNote(ruleId:RuleNoteId) {
   const row=ruleNoteRows.find(button=>button.dataset.ruleNote===ruleId);if(!row)return;
+  if(ruleId==='bell') {
+    row.classList.remove('mark-question','mark-check','mark-strike');
+    row.setAttribute('aria-label',language==='ko'?'종 교란 이벤트. 체크할 수 없는 참고 정보입니다.':'Bell distraction event. Informational only.');return;
+  }
   const mark=ruleNoteMarks[ruleId];row.classList.toggle('mark-question',mark==='?');row.classList.toggle('mark-check',mark==='✓');row.classList.toggle('mark-strike',mark==='strike');
   const label=row.querySelector('.note-copy b')?.textContent??ruleId;
   const state=language==='ko'?(mark==='?'?'의심':mark==='✓'?'확인':mark==='strike'?'제외':'표시 없음'):(mark==='?'?'questioned':mark==='✓'?'checked':mark==='strike'?'ruled out':'unmarked');
@@ -488,6 +494,7 @@ function updateRuleNote(ruleId:RuleNoteId) {
 }
 
 function cycleRuleNote(ruleId:RuleNoteId) {
+  if(ruleId==='bell')return;
   const current=ruleNoteMarks[ruleId];ruleNoteMarks[ruleId]=current===null?'?':current==='?'?'✓':current==='✓'?'strike':null;updateRuleNote(ruleId);
 }
 
@@ -528,40 +535,38 @@ function chooseParticipants(count:number,rules:RuleDefinition[],target:RuleDefin
   return shuffle([...required,...remaining]);
 }
 
-function noiseCountsFor(count:number) {
-  if(count===6)return [2,3,3,4];
-  if(count===9)return [3,4,5,6];
-  if(count===12)return [5,6,6,7];
-  return [10,12,12,14];
+function chooseActiveRules() {
+  const rulesByAction=new Map<ActionName,RuleDefinition[]>();
+  for(const rule of RULES)rulesByAction.set(rule.action,[...(rulesByAction.get(rule.action)??[]),rule]);
+  return shuffle([...rulesByAction.values()]).slice(0,4).map(group=>shuffle(group)[0]);
+}
+
+function halfCount(count:number) {
+  return count%2===0?count/2:(Math.random()<.5?Math.floor(count/2):Math.ceil(count/2));
+}
+
+function assignBalancedNoise(rule:RuleDefinition|null) {
+  const selected=new Set(shuffle(activeSubjects).slice(0,halfCount(participantCount)).map(subject=>subject.id));
+  activeSubjects.forEach(subject=>{
+    if(rule)subject.obeys[rule.id]=selected.has(subject.id);
+    else subject.bellObeys=selected.has(subject.id);
+  });
 }
 
 function configureRound() {
   configureArena();
-  activeRules=shuffle(RULES).slice(0,4);activeRuleIds=new Set(activeRules.map(rule=>rule.id));
+  activeRules=chooseActiveRules();activeRuleIds=new Set(activeRules.map(rule=>rule.id));
   targetRule=activeRules[Math.floor(Math.random()*activeRules.length)];
   bellSourceRule=activeRules[Math.floor(Math.random()*activeRules.length)];bellAction=bellSourceRule.action;
   activeSubjects=chooseParticipants(participantCount,activeRules,targetRule);activeSubjectIds=new Set(activeSubjects.map(subject=>subject.id));
   oddId=activeSubjects[Math.floor(Math.random()*activeSubjects.length)].id;
   subjects.forEach(subject=>{subject.root.visible=activeSubjectIds.has(subject.id);subject.bellObeys=false;for(const rule of RULES)subject.obeys[rule.id]=false;});
   activeSubjects.forEach(subject=>subject.obeys[targetRule.id]=subject.id!==oddId);
-  const noiseRules=shuffle(activeRules.filter(rule=>rule.id!==targetRule.id));
-  const balancedCounts=shuffle(noiseCountsFor(participantCount));
-  const oddNoisePattern=shuffle([true,true,false,false]);
-  const noiseAssignments:(RuleDefinition|null)[]=[null,...noiseRules];
-  shuffle(noiseAssignments).forEach((rule,index)=>{
-    const desired=balancedCounts[index];const oddObeys=oddNoisePattern[index];
-    const others=shuffle(activeSubjects.filter(subject=>subject.id!==oddId));
-    if(rule) {
-      subjects[oddId].obeys[rule.id]=oddObeys;
-      others.slice(0,desired-(oddObeys?1:0)).forEach(subject=>subject.obeys[rule.id]=true);
-    } else {
-      subjects[oddId].bellObeys=oddObeys;
-      others.slice(0,desired-(oddObeys?1:0)).forEach(subject=>subject.bellObeys=true);
-    }
-  });
+  activeRules.filter(rule=>rule.id!==targetRule.id).forEach(rule=>assignBalancedNoise(rule));
+  assignBalancedNoise(null);
   const columns=participantCount<=9?3:participantCount<=12?4:6;const rows=Math.ceil(participantCount/columns);
   subjects.forEach(s=>{
-    randomWaypoint(s.waypoint); s.action=null; s.actionTime=0; s.body.position.y=0; s.body.rotation.set(0,0,0); s.marker.material.opacity=0;s.marker.material.color.set(0xffffff);s.inspected=false;s.inspectedSprite.material.opacity=0;setSubjectMark(s,null);
+    randomWaypoint(s.waypoint);s.action=null;s.actionTime=0;resetActionPose(s);s.marker.material.opacity=0;s.marker.material.color.set(0xffffff);s.inspected=false;s.inspectedSprite.material.opacity=0;setSubjectMark(s,null);
     Object.keys(s.cooldowns).forEach(k=>s.cooldowns[k as RuleId]=0);s.lastCenterInside=false;s.lastEdgeInside=false;s.lastBellZoneInside=false;s.lastLampZoneInside=false;
   });
   activeSubjects.forEach((subject,index)=>subject.root.position.set((index%columns-(columns-1)/2)*6.5,0,(Math.floor(index/columns)-(rows-1)/2)*7));
@@ -571,20 +576,18 @@ function configureRound() {
 
 function validateRoundConfiguration() {
   if(activeRules.length!==4||new Set(activeRules.map(rule=>rule.id)).size!==4)throw new Error('A round must select four distinct behavior rules.');
+  if(new Set(activeRules.map(rule=>rule.action)).size!==4)throw new Error('Active behavior rules must use four distinct actions.');
   if(!activeRuleIds.has(targetRule.id))throw new Error('Target rule must be active.');
   if(!activeRuleIds.has(bellSourceRule.id)||bellAction!==bellSourceRule.action)throw new Error('Bell behavior must match one active rule action.');
   for(const rule of activeRules) {
     const obeyCount=activeSubjects.filter(subject=>subject.obeys[rule.id]).length;
     if(rule.id===targetRule.id&&obeyCount!==participantCount-1)throw new Error('Target rule must be N-1:1.');
-    if(rule.id!==targetRule.id&&(obeyCount<2||obeyCount>participantCount-2))throw new Error('Noise rules require at least two obeying and two non-obeying subjects.');
+    if(rule.id!==targetRule.id&&Math.abs(obeyCount-participantCount/2)>.5)throw new Error('Noise rules must split subjects as evenly as possible.');
     const requiredStimuli=rule.stimulus?(rule.id===targetRule.id?2:1):0;
     if(requiredStimuli&&activeSubjects.filter(subject=>stimulusPoolFor(rule).includes(subject)).length<requiredStimuli)throw new Error('Active appearance rules require visible stimulus NPCs.');
   }
   const bellObeyCount=activeSubjects.filter(subject=>subject.bellObeys).length;
-  if(bellObeyCount<2||bellObeyCount>participantCount-2)throw new Error('Bell noise requires at least two obeying and two non-obeying subjects.');
-  const oddSubject=subjects[oddId];
-  const oddNoiseCount=activeRules.filter(rule=>rule.id!==targetRule.id&&oddSubject.obeys[rule.id]).length+(oddSubject.bellObeys?1:0);
-  if(oddNoiseCount!==2)throw new Error('Odd subject must obey exactly two of four noise signals.');
+  if(Math.abs(bellObeyCount-participantCount/2)>.5)throw new Error('Bell noise must split subjects as evenly as possible.');
 }
 
 function shuffle<T>(items:T[]) { return [...items].sort(()=>Math.random()-.5); }
@@ -592,7 +595,7 @@ function shuffle<T>(items:T[]) { return [...items].sort(()=>Math.random()-.5); }
 function trigger(subject:Subject, ruleId:RuleId) {
   if(!activeRuleIds.has(ruleId))return;
   if(subject.cooldowns[ruleId]>0 || subject.action) return;
-  subject.cooldowns[ruleId]=ruleId==='greetingWave'?5:['centerSpin','edgeJump','bellZoneWave','lampJump','turnSpin'].includes(ruleId)?6:3.5;
+  subject.cooldowns[ruleId]=ruleId==='greetingWave'?5:['centerClap','edgeJump','bellZoneCheer','lampBow','turnSpin'].includes(ruleId)?6:3.5;
   if(subject.obeys[ruleId]) { subject.action=RULES.find(r=>r.id===ruleId)!.action; subject.actionTime=0; }
 }
 
@@ -600,8 +603,8 @@ function ringBell() {
   bellTimer=THREE.MathUtils.randFloat(10,14);
   activeSubjects.forEach(subject=>{
     if(!subject.bellObeys)return;
+    resetActionPose(subject);
     subject.action=bellAction;subject.actionTime=0;
-    subject.body.position.y=0;subject.body.rotation.y=0;subject.rightArm.rotation.z=0;
   });
   bell.scale.set(1.3,.8,1.3);playBellSound();showToast(copy(`종 이벤트 · ${ACTION_LABELS[bellAction].ko}`,`BELL EVENT · ${ACTION_LABELS[bellAction].en}`),false,900);
 }
@@ -624,15 +627,20 @@ function updateSubject(s:Subject,dt:number) {
   const gait=Math.sin(roundTime*s.speed*5+s.id)*.1*moveFactor;
   s.body.rotation.z=gait; s.leftArm.rotation.x=gait*2; s.rightArm.rotation.x=-gait*2;
   const inCenter=Math.hypot(s.root.position.x,s.root.position.z)<centerTriggerRadius;
-  if(inCenter&&!s.lastCenterInside) trigger(s,'centerSpin'); s.lastCenterInside=inCenter;
+  if(inCenter&&!s.lastCenterInside) trigger(s,'centerClap'); s.lastCenterInside=inCenter;
   const inEdge=Math.max(Math.abs(s.root.position.x),Math.abs(s.root.position.z))>arenaHalf*.62;
   if(inEdge&&!s.lastEdgeInside)trigger(s,'edgeJump');s.lastEdgeInside=inEdge;
   const inBellZone=Math.hypot(s.root.position.x,s.root.position.z+25*arenaScale)<Math.max(2.8,5*arenaScale);
-  if(inBellZone&&!s.lastBellZoneInside)trigger(s,'bellZoneWave');s.lastBellZoneInside=inBellZone;
+  if(inBellZone&&!s.lastBellZoneInside)trigger(s,'bellZoneCheer');s.lastBellZoneInside=inBellZone;
   const lampDistance=Math.min(...([[-24,-24],[24,-24],[-24,24],[24,24]] as [number,number][]).map(([x,z])=>Math.hypot(s.root.position.x-x*arenaScale,s.root.position.z-z*arenaScale)));
   const inLampZone=lampDistance<Math.max(2.8,4.5*arenaScale);
-  if(inLampZone&&!s.lastLampZoneInside)trigger(s,'lampJump');s.lastLampZoneInside=inLampZone;
+  if(inLampZone&&!s.lastLampZoneInside)trigger(s,'lampBow');s.lastLampZoneInside=inLampZone;
   if(s.action) animateAction(s,dt);
+}
+
+function resetActionPose(s:Subject) {
+  s.body.position.y=0;s.body.rotation.set(0,0,0);
+  s.leftArm.rotation.set(0,0,0);s.rightArm.rotation.set(0,0,0);
 }
 
 function animateAction(s:Subject,dt:number) {
@@ -640,7 +648,13 @@ function animateAction(s:Subject,dt:number) {
   if(s.action==='jump') s.body.position.y=Math.max(0,Math.sin(Math.min(t/1.2,1)*Math.PI)*2.25);
   if(s.action==='wave') { s.rightArm.rotation.z=-2.55; s.rightArm.rotation.x=Math.sin(t*13)*.7; }
   if(s.action==='spin') s.body.rotation.y=t*Math.PI*2.1;
-  if(t>1.25){s.action=null;s.actionTime=0;s.body.position.y=0;s.body.rotation.y=0;s.rightArm.rotation.z=0;}
+  if(s.action==='bow')s.body.rotation.x=Math.sin(Math.min(t/1.2,1)*Math.PI)*.72;
+  if(s.action==='clap') {
+    const clap=Math.abs(Math.sin(t*12));s.leftArm.rotation.x=s.rightArm.rotation.x=-1.25;
+    s.leftArm.rotation.z=-.2-clap*.5;s.rightArm.rotation.z=.2+clap*.5;
+  }
+  if(s.action==='cheer') {s.leftArm.rotation.z=2.5;s.rightArm.rotation.z=-2.5;s.body.position.y=Math.abs(Math.sin(t*7))*.35;}
+  if(t>1.25){s.action=null;s.actionTime=0;resetActionPose(s);}
 }
 
 function processProximityRules() {
@@ -650,7 +664,7 @@ function processProximityRules() {
       if(b.red) trigger(a,'redJump'); if(a.red) trigger(b,'redJump');
       if(b.blue) trigger(a,'blueSpin'); if(a.blue) trigger(b,'blueSpin');
       if(b.yellow) trigger(a,'yellowWave'); if(a.yellow) trigger(b,'yellowWave');
-      if(b.hat) trigger(a,'hatWave'); if(a.hat) trigger(b,'hatWave');
+      if(b.hat) trigger(a,'hatBow'); if(a.hat) trigger(b,'hatBow');
     }
     if(d<4&&areFacingEachOther(a,b)) { trigger(a,'greetingWave'); trigger(b,'greetingWave'); }
   }
@@ -682,9 +696,9 @@ function pickSubjectAt(clientX:number,clientY:number) {
 }
 
 function beginTouchPointer(event:PointerEvent) {
-  if(!touchMode||!playing)return;
+  if(!touchMode||!playing||paused)return;
   event.preventDefault();
-  canvas.setPointerCapture(event.pointerId);
+  try { canvas.setPointerCapture(event.pointerId); } catch { /* Keep tracking while the pointer remains over the canvas. */ }
   activePointers.set(event.pointerId,{x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY});
   if(activePointers.size===1) mobileDragged=false;
   if(activePointers.size===2) {
@@ -697,7 +711,7 @@ function beginTouchPointer(event:PointerEvent) {
 
 function moveTouchPointer(event:PointerEvent) {
   const point=activePointers.get(event.pointerId);
-  if(!touchMode||!point)return;
+  if(!touchMode||paused||!point)return;
   event.preventDefault();
   const previousX=point.x,previousY=point.y;
   point.x=event.clientX;point.y=event.clientY;
@@ -735,6 +749,7 @@ function endTouchPointer(event:PointerEvent) {
   const point=activePointers.get(event.pointerId);
   if(!touchMode||!point)return;
   event.preventDefault();
+  try { if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId); } catch { /* Capture may already be released. */ }
   const wasMulti=activePointers.size>1;
   activePointers.delete(event.pointerId);
   if(!wasMulti&&!mobileDragged&&Math.hypot(event.clientX-point.startX,event.clientY-point.startY)<8) selectSubject(pickSubjectAt(event.clientX,event.clientY));
@@ -888,7 +903,7 @@ function setAltCursorMode(value:boolean) {
   else if(playing&&!paused)requestGamePointerLock();
 }
 
-function startRound(){configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){resetMobileCamera();if(!mobileTutorialComplete)setMobileHint(copy('한 손가락 · 둘러보기','ONE FINGER · LOOK AROUND'))}else{camera.fov=62;camera.updateProjectionMatrix();camera.position.set(0,Math.max(8,arenaSize*.22),arenaHalf*.82);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
+function startRound(){configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){initializeMobileCamera();if(!mobileTutorialComplete)setMobileHint(copy('한 손가락 · 둘러보기','ONE FINGER · LOOK AROUND'))}else{camera.fov=62;camera.updateProjectionMatrix();camera.position.set(0,Math.max(8,arenaSize*.22),arenaHalf*.82);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
 
 function updateResultCopy(){
   const success=roundResult==='success';
@@ -930,7 +945,6 @@ canvas.addEventListener('pointerup',endTouchPointer);
 canvas.addEventListener('pointercancel',cancelTouchPointers);
 document.addEventListener('touchend',preventNativeDoubleTapZoom,{passive:false});
 document.addEventListener('dblclick',event=>{if(touchMode)event.preventDefault()},{passive:false});
-document.querySelector('#camera-reset')!.addEventListener('click',()=>{if(playing)resetMobileCamera()});
 document.querySelector('#mobile-accuse')!.addEventListener('click',()=>accuse(selectedSubject));
 questionButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='?'?null:'?')});
 clearButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='✓'?null:'✓')});
@@ -942,7 +956,7 @@ controlsCloseButton.addEventListener('click',closeControls);
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
 languageToggle.addEventListener('click',toggleLanguage);
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
-addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(!altCursorMode);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}const noteIndex=['Digit1','Digit2','Digit3','Digit4','Digit5'].indexOf(e.code);if(noteIndex>=0&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(!altCursorMode);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}const noteIndex=['Digit1','Digit2','Digit3','Digit4'].indexOf(e.code);if(noteIndex>=0&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault();adjustDesktopZoom(Math.sign(e.deltaY))}},{passive:false});
 document.addEventListener('pointerlockchange',()=>{
   if(document.pointerLockElement===canvas) {
@@ -961,5 +975,5 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode
 
 applyLanguage();
 const clock=new THREE.Clock(); let proximityTimer=0;
-function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const dt=Math.min(clock.getDelta(),.05);if(playing&&!paused){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode)applyMobileCamera();else updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
+function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const dt=Math.min(clock.getDelta(),.05);if(playing&&!paused){roundTime+=dt;bellTimer-=dt;bell.scale.lerp(new THREE.Vector3(1,1,1),dt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,dt));proximityTimer-=dt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode&&followedSubject)applyMobileCamera();else if(!touchMode)updateCamera(dt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
 frame();
