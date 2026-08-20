@@ -153,7 +153,7 @@ function makeMarkerTexture(label:string) {
   const ctx = c.getContext('2d')!; ctx.fillStyle='#f4b942'; ctx.beginPath(); ctx.roundRect(4,4,248,88,14); ctx.fill();
   ctx.fillStyle='#171713'; ctx.textAlign='center'; ctx.textBaseline='middle';
   let fontSize=46;
-  do { ctx.font=`700 ${fontSize--}px "Noto Sans KR", Space Grotesk, sans-serif`; } while(ctx.measureText(label).width>216&&fontSize>30);
+  do { ctx.font=`700 ${fontSize--}px "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`; } while(ctx.measureText(label).width>216&&fontSize>30);
   ctx.fillText(label,128,50);
   const texture = new THREE.CanvasTexture(c); texture.colorSpace=THREE.SRGBColorSpace; return texture;
 }
@@ -162,7 +162,7 @@ function makeInspectedTexture(label:string) {
   const c=document.createElement('canvas');c.width=320;c.height=92;
   const ctx=c.getContext('2d')!;ctx.fillStyle='rgba(17,17,15,.94)';ctx.beginPath();ctx.roundRect(4,4,312,84,16);ctx.fill();
   ctx.strokeStyle='#e65b47';ctx.lineWidth=7;ctx.beginPath();ctx.arc(48,42,18,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(61,55);ctx.lineTo(79,73);ctx.stroke();
-  ctx.fillStyle='#ff8c79';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 32px "Noto Sans KR", Space Grotesk, sans-serif';ctx.fillText(label,194,48);
+  ctx.fillStyle='#ff8c79';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 32px "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';ctx.fillText(label,194,48);
   const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;return texture;
 }
 
@@ -173,7 +173,7 @@ function makeSymbolTexture(symbol:string,color:string) {
   if(symbol==='✓') {
     ctx.lineWidth=12;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(34,66);ctx.lineTo(54,84);ctx.lineTo(94,42);ctx.stroke();
   } else {
-    ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 82px Space Grotesk';ctx.fillText(symbol,64,66);
+    ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 82px "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';ctx.fillText(symbol,64,66);
   }
   const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;return texture;
 }
