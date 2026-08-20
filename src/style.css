@@ -104,20 +104,25 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 
 /* Touch mission list: always visible, compact and transparent */
 .touch-mode .rule-notes-toggle { display: none; }
-.touch-mode .rule-notes { left: max(12px,env(safe-area-inset-left)); right: auto; top: calc(78px + env(safe-area-inset-top)); bottom: auto; width: min(280px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right))); max-height: none; padding: 0; overflow: visible; border-radius: 0; background: transparent; color: #f4f1e8; box-shadow: none; letter-spacing: .02em; transform: translateX(-10px); }
+.touch-mode .rule-notes { left: max(12px,env(safe-area-inset-left)); right: auto; top: calc(78px + env(safe-area-inset-top)); bottom: auto; width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); max-height: none; padding: 0; overflow: visible; border-radius: 0; background: transparent; color: #f4f1e8; box-shadow: none; letter-spacing: .02em; transform: translateX(-10px); transition: opacity .16s ease, transform .25s, visibility .25s; }
 .touch-mode.round-active .rule-notes.open { opacity: 1; visibility: visible; transform: translateX(0); }
+.touch-mode.round-active.camera-gesture .rule-notes.open { opacity: .18; pointer-events: none; }
 .touch-mode .rule-notes::after { display: none; }
-.touch-mode .rule-notes header { min-height: 0; padding: 0 0 7px; border: 0; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
+.touch-mode .rule-notes header { min-height: 24px; padding: 0 0 6px; border: 0; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
 .touch-mode .rule-notes header b { color: var(--yellow); font-size: 13px; }
 .touch-mode .rule-notes header button { display: none; }
-.touch-mode .rule-note-list { display: grid; gap: 0; overflow: visible; }
-.touch-mode .rule-note { min-height: 44px; padding: 3px 0; border: 0; color: #f4f1e8; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
+.touch-mode .rule-note-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px 8px; overflow: visible; }
+.touch-mode .rule-note { min-width: 0; min-height: 48px; grid-template-columns: 13px 26px minmax(0,1fr); gap: 5px; padding: 2px 0; border: 0; color: #f4f1e8; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
 .touch-mode .rule-note:active { color: var(--yellow-soft); }
 .touch-mode .note-index { opacity: .62; }
-.touch-mode .note-mark { border-color: rgba(244,241,232,.58); background: rgba(10,11,9,.2); box-shadow: 0 2px 8px rgba(0,0,0,.38); }
-.touch-mode .note-copy small { overflow: hidden; text-overflow: ellipsis; opacity: .8; }
+.touch-mode .note-mark { width: 26px; height: 32px; border-color: rgba(244,241,232,.58); background: rgba(10,11,9,.2); box-shadow: 0 2px 8px rgba(0,0,0,.38); }
+.touch-mode .note-copy b { display: none; }
+.touch-mode .note-copy small { display: -webkit-box; margin: 0; overflow: hidden; line-height: 1.35; white-space: normal; text-overflow: ellipsis; opacity: .9; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.touch-mode .bell-note { grid-column: 1 / -1; min-height: 34px; grid-template-columns: 28px minmax(0,1fr); padding-top: 0; padding-bottom: 0; }
+.touch-mode .bell-note .note-copy b { display: none; }
+.touch-mode .bell-note .note-copy small { display: block; white-space: nowrap; }
 .touch-mode .bell-note .note-copy b { color: #ff9d8f; }
-.touch-mode .rule-notes footer { padding: 6px 0 0; border: 0; color: rgba(244,241,232,.74); text-align: left; text-shadow: 0 2px 8px rgba(0,0,0,.95); opacity: 1; }
+.touch-mode .rule-notes footer { position: absolute; z-index: 2; top: 1px; right: 0; padding: 0; border: 0; color: rgba(244,241,232,.74); text-align: right; text-shadow: 0 2px 8px rgba(0,0,0,.95); opacity: 1; }
 .touch-mode .desktop-note-help { display: none; }
 .touch-mode .mobile-note-help { display: inline; }
 

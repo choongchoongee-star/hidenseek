@@ -717,6 +717,7 @@ function beginTouchPointer(event:PointerEvent) {
     previousGestureCenter.set((points[0].x+points[1].x)/2,(points[0].y+points[1].y)/2);
     previousGestureDistance=Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);
     mobileDragged=true;
+    document.body.classList.add('camera-gesture');
   }
 }
 
@@ -728,7 +729,10 @@ function moveTouchPointer(event:PointerEvent) {
   point.x=event.clientX;point.y=event.clientY;
   if(activePointers.size===1) {
     const totalDistance=Math.hypot(point.x-point.startX,point.y-point.startY);
-    if(totalDistance>6)mobileDragged=true;
+    if(totalDistance>6) {
+      mobileDragged=true;
+      document.body.classList.add('camera-gesture');
+    }
     if(mobileDragged) {
       mobileSpherical.theta-=(point.x-previousX)*.007;
       mobileSpherical.phi=THREE.MathUtils.clamp(mobileSpherical.phi+(point.y-previousY)*.005,.45,1.28);
@@ -766,9 +770,10 @@ function endTouchPointer(event:PointerEvent) {
     const remaining=[...activePointers.values()][0];remaining.startX=remaining.x;remaining.startY=remaining.y;mobileDragged=true;
   }
   if(activePointers.size<2)previousGestureDistance=0;
+  if(activePointers.size===0)document.body.classList.remove('camera-gesture');
 }
 
-function cancelTouchPointers(){activePointers.clear();previousGestureDistance=0;mobileDragged=false;}
+function cancelTouchPointers(){activePointers.clear();previousGestureDistance=0;mobileDragged=false;document.body.classList.remove('camera-gesture');}
 
 function preventNativeDoubleTapZoom(event:TouchEvent) {
   if(!touchMode||event.changedTouches.length!==1)return;
