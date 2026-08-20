@@ -277,6 +277,7 @@ const subjectCountSummary=document.querySelector<HTMLElement>('#subject-count-su
 const ruleNotes=document.querySelector<HTMLElement>('#rule-notes')!;
 const ruleNotesToggle=document.querySelector<HTMLButtonElement>('#rule-notes-toggle')!;
 const ruleNoteRows=[...document.querySelectorAll<HTMLButtonElement>('[data-rule-note]')];
+const mobileBellStatus=document.querySelector<HTMLElement>('#mobile-bell-status')!;
 const languageToggle=document.querySelector<HTMLButtonElement>('#language-toggle')!;
 const mobilePauseButton=document.querySelector<HTMLButtonElement>('#mobile-pause')!;
 const speedControls=document.querySelector<HTMLElement>('#speed-controls')!;
@@ -474,6 +475,7 @@ function setRuleNotesOpen(value:boolean) {
 
 function renderRuleNotes() {
   RULE_NOTE_ORDER=[...activeRules.map(rule=>rule.id),'bell'];
+  mobileBellStatus.textContent=copy(`🔔 강제 ${ACTION_LABELS[bellAction].ko} · 정답 아님`,`🔔 ${ACTION_LABELS[bellAction].en} · DECOY`);
   ruleNoteRows.forEach((row,index)=>{
     const ruleId=RULE_NOTE_ORDER[index];row.dataset.ruleNote=ruleId;
     const indexLabel=row.querySelector<HTMLElement>('.note-index')!;indexLabel.textContent=ruleId==='bell'?'🔔':String(index+1);

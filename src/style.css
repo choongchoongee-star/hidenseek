@@ -66,6 +66,7 @@ button:focus-visible { outline: 2px solid var(--yellow-soft); outline-offset: 3p
 .rule-notes header, .rule-note-list, .rule-notes footer { position: relative; z-index: 1; }
 .rule-notes header { min-height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 11px 12px 10px 17px; border-bottom: 2px solid rgba(29,28,22,.55); }
 .rule-notes header b { font-size: 16px; }
+.mobile-rule-hint, .mobile-bell-status { display: none; }
 .rule-notes header button { width: 44px; height: 44px; padding: 0; border: 0; background: rgba(29,28,22,.08); color: #1d1c16; font-size: 23px; cursor: pointer; }
 .rule-note-list { overflow-y: auto; }
 .rule-note { width: 100%; min-height: 58px; display: grid; grid-template-columns: 18px 30px minmax(0,1fr); align-items: center; gap: 9px; padding: 8px 13px; border: 0; border-bottom: 1px solid rgba(43,53,55,.2); background: transparent; color: #1d1c16; text-align: left; cursor: pointer; }
@@ -105,24 +106,32 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 /* Touch mission list: always visible, compact and transparent */
 .touch-mode .rule-notes-toggle { display: none; }
 .touch-mode .rule-notes { left: max(12px,env(safe-area-inset-left)); right: auto; top: calc(78px + env(safe-area-inset-top)); bottom: auto; width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); max-height: none; padding: 0; overflow: visible; border-radius: 0; background: transparent; color: #f4f1e8; box-shadow: none; letter-spacing: .02em; transform: translateX(-10px); transition: opacity .16s ease, transform .25s, visibility .25s; }
-.touch-mode.round-active .rule-notes.open { opacity: 1; visibility: visible; transform: translateX(0); }
-.touch-mode.round-active.camera-gesture .rule-notes.open { opacity: .18; pointer-events: none; }
+.touch-mode.round-active .rule-notes.open { opacity: .7; visibility: visible; transform: translateX(0); }
+.touch-mode.round-active .rule-notes.open:active { opacity: 1; }
+.touch-mode.round-active.camera-gesture .rule-notes.open { opacity: .12; pointer-events: none; }
 .touch-mode .rule-notes::after { display: none; }
-.touch-mode .rule-notes header { min-height: 24px; padding: 0 0 6px; border: 0; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
-.touch-mode .rule-notes header b { color: var(--yellow); font-size: 13px; }
+.touch-mode .rule-notes header { min-height: 22px; padding: 0 0 4px; border: 0; gap: 8px; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
+.touch-mode .rule-notes header > div { min-width: 0; display: flex; align-items: baseline; white-space: nowrap; }
+.touch-mode .rule-notes header b { color: var(--yellow); font-size: 11px; }
+.touch-mode .mobile-rule-hint { display: inline; color: rgba(244,241,232,.72); font-size: 10px; }
+.touch-mode .mobile-bell-status { min-width: 0; display: block; overflow: hidden; color: #ffb3a7; font-size: 10px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .touch-mode .rule-notes header button { display: none; }
 .touch-mode .rule-note-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px 8px; overflow: visible; }
-.touch-mode .rule-note { min-width: 0; min-height: 48px; grid-template-columns: 13px 26px minmax(0,1fr); gap: 5px; padding: 2px 0; border: 0; color: #f4f1e8; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
+.touch-mode .rule-note { min-width: 0; min-height: 44px; grid-template-columns: 28px minmax(0,1fr); gap: 5px; padding: 1px 0; border: 0; color: #f4f1e8; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
+.touch-mode .rule-note:hover { background: transparent; }
 .touch-mode .rule-note:active { color: var(--yellow-soft); }
-.touch-mode .note-index { opacity: .62; }
-.touch-mode .note-mark { width: 26px; height: 32px; border-color: rgba(244,241,232,.58); background: rgba(10,11,9,.2); box-shadow: 0 2px 8px rgba(0,0,0,.38); }
+.touch-mode .rule-note:focus-visible { outline: 0; }
+.touch-mode .rule-note:focus-visible .note-index { box-shadow: 0 0 0 1px var(--yellow-soft); }
+.touch-mode .note-index { display: grid; place-items: center; width: 28px; height: 28px; border-left: 2px solid rgba(244,185,66,.7); background: rgba(10,11,9,.22); color: rgba(244,241,232,.8); font-weight: 700; opacity: 1; }
+.touch-mode .note-mark { display: none; }
+.touch-mode .rule-note.mark-question .note-index::after { content: '?'; color: #77c9ff; }
+.touch-mode .rule-note.mark-check .note-index::after { content: '✓'; color: #75e1bb; }
+.touch-mode .rule-note.mark-strike .note-index::after { content: '—'; color: #ff8c7e; }
+.touch-mode .rule-note.mark-question .note-index, .touch-mode .rule-note.mark-check .note-index, .touch-mode .rule-note.mark-strike .note-index { grid-template-columns: auto auto; column-gap: 1px; }
 .touch-mode .note-copy b { display: none; }
 .touch-mode .note-copy small { display: -webkit-box; margin: 0; overflow: hidden; line-height: 1.35; white-space: normal; text-overflow: ellipsis; opacity: .9; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.touch-mode .bell-note { grid-column: 1 / -1; min-height: 34px; grid-template-columns: 28px minmax(0,1fr); padding-top: 0; padding-bottom: 0; }
-.touch-mode .bell-note .note-copy b { display: none; }
-.touch-mode .bell-note .note-copy small { display: block; white-space: nowrap; }
-.touch-mode .bell-note .note-copy b { color: #ff9d8f; }
-.touch-mode .rule-notes footer { position: absolute; z-index: 2; top: 1px; right: 0; padding: 0; border: 0; color: rgba(244,241,232,.74); text-align: right; text-shadow: 0 2px 8px rgba(0,0,0,.95); opacity: 1; }
+.touch-mode .bell-note { display: none; }
+.touch-mode .rule-notes footer { display: none; }
 .touch-mode .desktop-note-help { display: none; }
 .touch-mode .mobile-note-help { display: inline; }
 
