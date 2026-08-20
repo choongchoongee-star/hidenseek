@@ -26,7 +26,7 @@
         <span data-ko="남은 고발" data-en="ACCUSATIONS">남은 고발</span>
         <div id="attempts" class="attempts" aria-label="3 attempts remaining"></div>
       </aside>
-      <button id="rule-notes-toggle" class="hud rule-notes-toggle" aria-controls="rule-notes" aria-expanded="false"><span data-ko="규칙 후보" data-en="RULE CANDIDATES">규칙 후보</span> <b>4</b></button>
+      <button id="rule-notes-toggle" class="hud rule-notes-toggle" aria-controls="rule-notes" aria-expanded="false"><span data-ko="규칙 후보" data-en="RULE CANDIDATES">규칙 후보</span> <b id="rule-count-badge">2</b></button>
       <aside id="rule-notes" class="hud rule-notes open" aria-label="Rule candidate checklist" aria-hidden="true">
         <header>
           <div><b data-ko="규칙 후보" data-en="RULE CANDIDATES">규칙 후보</b><span class="mobile-rule-hint" data-ko=" · 탭으로 표시" data-en=" · TAP TO MARK"> · 탭으로 표시</span></div>
@@ -40,7 +40,7 @@
           <button class="rule-note" data-rule-note="greetingWave"><span class="note-index">4</span><i class="note-mark"></i><span class="note-copy"><b data-ko="마주보기 인사" data-en="GREETING WAVE">마주보기 인사</b><small data-ko="서로 마주봄 → 둘 다 손 흔들기" data-en="Face each other → both WAVE">서로 마주봄 → 둘 다 손 흔들기</small></span></button>
           <button class="rule-note bell-note" data-rule-note="bell" aria-disabled="true" tabindex="-1"><span class="note-index">🔔</span><i class="note-mark"></i><span class="note-copy"><b data-ko="종 이벤트" data-en="BELL EVENT">종 이벤트</b><small data-ko="일부 참가자 강제 행동 · 정답 규칙 아님" data-en="Forces an action · NOT A TARGET">일부 참가자 강제 행동 · 정답 규칙 아님</small></span></button>
         </div>
-        <footer><span class="desktop-note-help" data-ko="1–4: ? → ✓ → 취소선 → 해제" data-en="1–4: ? → ✓ → STRIKE → CLEAR">1–4: ? → ✓ → 취소선 → 해제</span><span class="mobile-note-help" data-ko="탭: ? → ✓ → —" data-en="TAP: ? → ✓ → —">탭: ? → ✓ → —</span></footer>
+        <footer><span id="desktop-note-help" class="desktop-note-help">1–2: ? → ✓ → 취소선 → 해제</span><span class="mobile-note-help" data-ko="탭: ? → ✓ → —" data-en="TAP: ? → ✓ → —">탭: ? → ✓ → —</span></footer>
       </aside>
       <div id="crosshair" class="crosshair"><i></i><i></i><i></i><i></i><span></span></div>
       <div id="target-label" class="target-label"></div>
@@ -83,9 +83,24 @@
             <button data-participant-count="24" role="radio" aria-checked="false">24 <small data-ko="극한" data-en="EXTREME">극한</small></button>
           </div>
         </div>
-        <div class="rule-strip"><span id="subject-count-summary">참가자 6명</span><span data-ko="정답 후보 4개" data-en="4 TARGET RULES">정답 후보 4개</span><span data-ko="기회 3번" data-en="3 CHANCES">기회 3번</span></div>
+        <div class="rule-strip"><span id="subject-count-summary">참가자 6명</span><span id="rule-count-summary">정답 후보 2개</span><span data-ko="기회 3번" data-en="3 CHANCES">기회 3번</span></div>
         <button id="play-button" class="primary"><span data-ko="게임 시작" data-en="START GAME">게임 시작</span> <b>→</b></button>
         <small id="device-note" data-ko="소리를 켜면 종 이벤트를 더 쉽게 알아챌 수 있어요" data-en="TURN UP THE SOUND TO CATCH THE BELL EVENT">소리를 켜면 종 이벤트를 더 쉽게 알아챌 수 있어요</small>
+      </section>
+      <section id="rules-screen" class="screen rules-screen" aria-hidden="true">
+        <div class="rules-dialog">
+          <div class="eyebrow" data-ko="게임 규칙" data-en="HOW TO PLAY">게임 규칙</div>
+          <h2 data-ko="한 명만 다릅니다." data-en="ONE PERSON BREAKS THE RULE.">한 명만 다릅니다.</h2>
+          <p class="rules-lead" data-ko="행동의 조건과 결과를 관찰해 다수가 따르는 단 하나의 규칙을 찾으세요." data-en="Observe what triggers each action and find the one rule followed by the majority.">행동의 조건과 결과를 관찰해 다수가 따르는 단 하나의 규칙을 찾으세요.</p>
+          <ol class="rules-steps">
+            <li><b>01</b><span><strong data-ko="정답 규칙은 하나" data-en="ONE TARGET RULE">정답 규칙은 하나</strong><small data-ko="후보 중 한 규칙만 한 명을 제외한 모두가 지킵니다." data-en="Exactly one candidate is followed by everyone except one NPC.">후보 중 한 규칙만 한 명을 제외한 모두가 지킵니다.</small></span></li>
+            <li><b>02</b><span><strong data-ko="나머지는 혼란용" data-en="THE REST ARE NOISE">나머지는 혼란용</strong><small data-ko="다른 후보 규칙은 절반 정도만 지킵니다. Odd도 지킬 수도, 안 지킬 수도 있습니다." data-en="The other candidates are followed by about half. The Odd NPC may follow them or not.">다른 후보 규칙은 절반 정도만 지킵니다. Odd도 지킬 수도, 안 지킬 수도 있습니다.</small></span></li>
+            <li><b>🔔</b><span><strong data-ko="종은 정답이 아님" data-en="THE BELL IS A DECOY">종은 정답이 아님</strong><small data-ko="종이 울리면 일부 NPC에게 행동을 강제해 관찰을 방해합니다." data-en="When the bell rings, it forces some NPCs to act and disrupts observation.">종이 울리면 일부 NPC에게 행동을 강제해 관찰을 방해합니다.</small></span></li>
+          </ol>
+          <p class="rules-goal" data-ko="세 번의 기회 안에 그 규칙을 어기는 단 한 명을 지목하세요." data-en="You have three chances to accuse the one person who breaks that rule.">세 번의 기회 안에 그 규칙을 어기는 단 한 명을 지목하세요.</p>
+          <label class="dont-show-rules"><input id="dont-show-rules" type="checkbox" /><span data-ko="다시 보지 않기" data-en="DON'T SHOW AGAIN">다시 보지 않기</span></label>
+          <button id="rules-continue-button" class="primary"><span data-ko="계속" data-en="CONTINUE">계속</span> <b>→</b></button>
+        </div>
       </section>
       <section id="pause-screen" class="screen pause-screen" aria-hidden="true">
         <div class="eyebrow" data-ko="관찰 일시정지" data-en="OBSERVATION SUSPENDED">관찰 일시정지</div>

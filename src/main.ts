@@ -256,6 +256,7 @@ let centerTriggerRadius=5.6*arenaScale;
 let suppressAccusationUntil = 0;
 let controlsOrigin: ControlsOrigin = 'start';
 let controlsAcknowledged = readControlsAcknowledged();
+let rulesDismissed = readRulesDismissed();
 let roundTime = 0;
 let bellTimer = 8;
 let gameSpeed:GameSpeed = 1;
@@ -288,8 +289,14 @@ const clearButton = document.querySelector<HTMLButtonElement>('#mark-clear')!;
 const followButton = document.querySelector<HTMLButtonElement>('#mobile-follow')!;
 const controlsScreen = document.querySelector<HTMLElement>('#controls-screen')!;
 const controlsCloseButton = document.querySelector<HTMLButtonElement>('#controls-close-button')!;
+const rulesScreen = document.querySelector<HTMLElement>('#rules-screen')!;
+const rulesContinueButton = document.querySelector<HTMLButtonElement>('#rules-continue-button')!;
+const dontShowRules = document.querySelector<HTMLInputElement>('#dont-show-rules')!;
 const participantButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-participant-count]')];
 const subjectCountSummary=document.querySelector<HTMLElement>('#subject-count-summary')!;
+const ruleCountSummary=document.querySelector<HTMLElement>('#rule-count-summary')!;
+const ruleCountBadge=document.querySelector<HTMLElement>('#rule-count-badge')!;
+const desktopNoteHelp=document.querySelector<HTMLElement>('#desktop-note-help')!;
 const ruleNotes=document.querySelector<HTMLElement>('#rule-notes')!;
 const ruleNotesToggle=document.querySelector<HTMLButtonElement>('#rule-notes-toggle')!;
 const ruleNoteRows=[...document.querySelectorAll<HTMLButtonElement>('[data-rule-note]')];
@@ -352,6 +359,18 @@ function readControlsAcknowledged() {
   catch { return false; }
 }
 
+function readRulesDismissed() {
+  try { return localStorage.getItem('the-odd-one-rules-v1')==='hidden'; }
+  catch { return false; }
+}
+
+function rememberRulesDismissed() {
+  if(!dontShowRules.checked)return;
+  rulesDismissed=true;
+  try { localStorage.setItem('the-odd-one-rules-v1','hidden'); }
+  catch { /* The rules screen will simply appear again next time. */ }
+}
+
 function rememberControlsAcknowledged() {
   controlsAcknowledged=true;
   try { localStorage.setItem('the-odd-one-controls-v3','seen'); }
@@ -377,8 +396,24 @@ function closeControls() {
 }
 
 function requestStartRound() {
+  if(!rulesDismissed) {
+    dontShowRules.checked=false;
+    rulesScreen.classList.add('open');
+    rulesScreen.setAttribute('aria-hidden','false');
+    rulesContinueButton.focus();
+  } else continueStartFlow();
+}
+
+function continueStartFlow() {
   if(controlsAcknowledged)startRound();
   else openControls('start');
+}
+
+function closeRules() {
+  rememberRulesDismissed();
+  rulesScreen.classList.remove('open');
+  rulesScreen.setAttribute('aria-hidden','true');
+  continueStartFlow();
 }
 
 function subjectFocus(subject:Subject) {
@@ -487,7 +522,10 @@ function cycleSubjectMark(subject:Subject) {
 
 function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
   participantCount=count;
+  const ruleCount=ruleCountForParticipants();
   subjectCountSummary.textContent=copy(`참가자 ${count}명`,`${count} NPCS`);
+  ruleCountSummary.textContent=copy(`정답 후보 ${ruleCount}개`,`${ruleCount} TARGET RULES`);
+  ruleCountBadge.textContent=String(ruleCount);
   participantButtons.forEach(button=>{
     const active=Number(button.dataset.participantCount)===count;
     button.classList.toggle('active',active);button.setAttribute('aria-checked',String(active));
@@ -502,9 +540,13 @@ function setRuleNotesOpen(value:boolean) {
 
 function renderRuleNotes() {
   RULE_NOTE_ORDER=[...activeRules.map(rule=>rule.id),'bell'];
+  desktopNoteHelp.textContent=copy(`1–${activeRules.length}: ? → ✓ → 취소선 → 해제`,`1–${activeRules.length}: ? → ✓ → STRIKE → CLEAR`);
   mobileBellStatus.textContent=copy(`🔔 강제 ${ACTION_LABELS[bellAction].ko} · 정답 아님`,`🔔 ${ACTION_LABELS[bellAction].en} · DECOY`);
   ruleNoteRows.forEach((row,index)=>{
-    const ruleId=RULE_NOTE_ORDER[index];row.dataset.ruleNote=ruleId;
+    const ruleId=RULE_NOTE_ORDER[index];
+    row.hidden=!ruleId;
+    if(!ruleId)return;
+    row.dataset.ruleNote=ruleId;
     const indexLabel=row.querySelector<HTMLElement>('.note-index')!;indexLabel.textContent=ruleId==='bell'?'🔔':String(index+1);
     row.setAttribute('aria-disabled',String(ruleId==='bell'));row.tabIndex=ruleId==='bell'?-1:0;
     const title=row.querySelector<HTMLElement>('.note-copy b')!;
@@ -607,10 +649,14 @@ function chooseParticipants(count:number,rules:RuleDefinition[],target:RuleDefin
   return shuffle([...required,...remaining]);
 }
 
+function ruleCountForParticipants() {
+  return participantCount===6?2:participantCount===9?3:4;
+}
+
 function chooseActiveRules() {
   const rulesByAction=new Map<ActionName,RuleDefinition[]>();
   for(const rule of RULES)rulesByAction.set(rule.action,[...(rulesByAction.get(rule.action)??[]),rule]);
-  return shuffle([...rulesByAction.values()]).slice(0,4).map(group=>shuffle(group)[0]);
+  return shuffle([...rulesByAction.values()]).slice(0,ruleCountForParticipants()).map(group=>shuffle(group)[0]);
 }
 
 function halfCount(count:number) {
@@ -647,8 +693,9 @@ function configureRound() {
 }
 
 function validateRoundConfiguration() {
-  if(activeRules.length!==4||new Set(activeRules.map(rule=>rule.id)).size!==4)throw new Error('A round must select four distinct behavior rules.');
-  if(new Set(activeRules.map(rule=>rule.action)).size!==4)throw new Error('Active behavior rules must use four distinct actions.');
+  const expectedRuleCount=ruleCountForParticipants();
+  if(activeRules.length!==expectedRuleCount||new Set(activeRules.map(rule=>rule.id)).size!==expectedRuleCount)throw new Error(`A ${participantCount}-NPC round must select ${expectedRuleCount} distinct behavior rules.`);
+  if(new Set(activeRules.map(rule=>rule.action)).size!==expectedRuleCount)throw new Error('Active behavior rules must use distinct actions.');
   if(!activeRuleIds.has(targetRule.id))throw new Error('Target rule must be active.');
   if(!activeRuleIds.has(bellSourceRule.id)||bellAction!==bellSourceRule.action)throw new Error('Bell behavior must match one active rule action.');
   for(const rule of activeRules) {
@@ -1020,13 +1067,13 @@ function returnToStartScreen(){
   document.body.classList.remove('round-active','paused','selection-active','cursor-free');
   setRuleNotesOpen(false);
   document.querySelector('#pause-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.setAttribute('aria-hidden','true');
-  document.querySelector('#end-screen')!.classList.remove('open');controlsScreen.classList.remove('open');controlsScreen.setAttribute('aria-hidden','true');
+  document.querySelector('#end-screen')!.classList.remove('open');controlsScreen.classList.remove('open');controlsScreen.setAttribute('aria-hidden','true');rulesScreen.classList.remove('open');rulesScreen.setAttribute('aria-hidden','true');
   document.querySelector('#start-screen')!.classList.add('open');
   clearTimeout(toastTimeout);document.querySelector('#toast')!.className='toast';
 }
 
 document.querySelector('#play-button')!.addEventListener('click',requestStartRound);
-document.querySelector('#replay-button')!.addEventListener('click',startRound);
+document.querySelector('#replay-button')!.addEventListener('click',requestStartRound);
 participantButtons.forEach(button=>button.addEventListener('click',()=>{
   const count=Number(button.dataset.participantCount);
   if(count===6||count===9||count===12||count===24)setParticipantCount(count);
@@ -1052,6 +1099,7 @@ mobilePauseButton.addEventListener('click',()=>setPaused(true));
 document.querySelector('#view-controls-button')!.addEventListener('click',()=>openControls('pause'));
 document.querySelector('#end-observation-button')!.addEventListener('click',returnToStartScreen);
 controlsCloseButton.addEventListener('click',closeControls);
+rulesContinueButton.addEventListener('click',closeRules);
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
 volumeSliders.forEach(slider=>slider.addEventListener('input',()=>setSoundVolume(Number(slider.value)/100)));
 languageToggle.addEventListener('click',toggleLanguage);
@@ -1060,7 +1108,7 @@ speedButtons.forEach(button=>button.addEventListener('click',()=>{
   if(speed===1||speed===1.5||speed===2)setGameSpeed(speed);
 }));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
-addEventListener('keydown',e=>{if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(!altCursorMode);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}const noteIndex=['Digit1','Digit2','Digit3','Digit4'].indexOf(e.code);if(noteIndex>=0&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('keydown',e=>{if(rulesScreen.classList.contains('open')){if(e.code==='Escape')e.preventDefault();return}if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(!altCursorMode);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}const noteIndex=['Digit1','Digit2','Digit3','Digit4'].indexOf(e.code);if(noteIndex>=0&&noteIndex<activeRules.length&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault();adjustDesktopZoom(Math.sign(e.deltaY))}},{passive:false});
 document.addEventListener('pointerlockchange',()=>{
   if(document.pointerLockElement===canvas) {
