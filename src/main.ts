@@ -254,6 +254,10 @@ const activePointers = new Map<number,ActivePointer>();
 const mobileTarget = new THREE.Vector3(0,1.8,0);
 const mobileSpherical = new THREE.Spherical(35,1.06,0);
 const desktopFollowSpherical = new THREE.Spherical(18,1.05,0);
+const desktopFreePosition = new THREE.Vector3();
+let desktopFreeYaw = 0;
+let desktopFreePitch = -.28;
+let desktopCameraHeight = 8;
 let previousGestureCenter = new THREE.Vector2();
 let previousGestureDistance = 0;
 let mobileDragged = false;
@@ -317,13 +321,13 @@ function toggleLanguage(){
 }
 
 function readControlsAcknowledged() {
-  try { return localStorage.getItem('the-odd-one-controls-v2')==='seen'; }
+  try { return localStorage.getItem('the-odd-one-controls-v3')==='seen'; }
   catch { return false; }
 }
 
 function rememberControlsAcknowledged() {
   controlsAcknowledged=true;
-  try { localStorage.setItem('the-odd-one-controls-v2','seen'); }
+  try { localStorage.setItem('the-odd-one-controls-v3','seen'); }
   catch { /* The guide still works when storage is unavailable. */ }
 }
 
@@ -416,11 +420,17 @@ function applyDesktopFollowCamera() {
 
 function setFollowSubject(subject:Subject|null,notify=true) {
   if(subject===followedSubject)return;
+  const wasFollowing=followedSubject!==null;
   followedSubject=subject;
   if(subject) {
     const target=subjectFocus(subject);
     if(touchMode)applyMobileCamera();
     else {
+      if(!wasFollowing) {
+        desktopFreePosition.copy(camera.position);
+        desktopFreeYaw=yaw;
+        desktopFreePitch=pitch;
+      }
       desktopFollowSpherical.setFromVector3(camera.position.clone().sub(target));
       desktopFollowSpherical.radius=THREE.MathUtils.clamp(desktopFollowSpherical.radius,6,45);
       desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi,.35,1.4);
@@ -429,7 +439,11 @@ function setFollowSubject(subject:Subject|null,notify=true) {
     if(notify)showToast(copy(`${subject.name} 따라가는 중`,`FOLLOWING ${subject.name}`),false,1100);
   } else {
     if(touchMode)applyMobileCamera();
-    else {camera.rotation.order='YXZ';yaw=camera.rotation.y;pitch=camera.rotation.x;}
+    else if(wasFollowing) {
+      camera.position.copy(desktopFreePosition);
+      yaw=desktopFreeYaw;pitch=desktopFreePitch;
+      camera.rotation.order='YXZ';camera.rotation.set(pitch,yaw,0);
+    }
     if(notify)showToast(copy('따라가기 해제','FOLLOW RELEASED'),false,900);
   }
   updateFollowButton();
@@ -793,9 +807,8 @@ function updateCamera(dt:number) {
   const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); right.y=0; right.normalize();
   const move=new THREE.Vector3();
   if(keys.has('KeyW'))move.add(forward);if(keys.has('KeyS'))move.sub(forward);if(keys.has('KeyD'))move.add(right);if(keys.has('KeyA'))move.sub(right);
-  if(keys.has('KeyE'))move.y++;if(keys.has('KeyQ'))move.y--;
   if(move.lengthSq()) move.normalize().multiplyScalar((keys.has('ShiftLeft')?18:8.5)*dt);
-  camera.position.add(move);camera.position.x=THREE.MathUtils.clamp(camera.position.x,-arenaHalf-2,arenaHalf+2);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-arenaHalf-2,arenaHalf+2);camera.position.y=THREE.MathUtils.clamp(camera.position.y,3,Math.max(16,arenaSize*.48));
+  camera.position.add(move);camera.position.x=THREE.MathUtils.clamp(camera.position.x,-arenaHalf-2,arenaHalf+2);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-arenaHalf-2,arenaHalf+2);camera.position.y=desktopCameraHeight;
 }
 
 function updateTargeting() {
@@ -915,7 +928,7 @@ function setAltCursorMode(value:boolean) {
   else if(playing&&!paused)requestGamePointerLock();
 }
 
-function startRound(){configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){initializeMobileCamera();if(!mobileTutorialComplete)setMobileHint(copy('한 손가락 · 둘러보기','ONE FINGER · LOOK AROUND'))}else{camera.fov=62;camera.updateProjectionMatrix();camera.position.set(0,Math.max(8,arenaSize*.22),arenaHalf*.82);yaw=0;pitch=-.28;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
+function startRound(){configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){initializeMobileCamera();if(!mobileTutorialComplete)setMobileHint(copy('한 손가락 · 둘러보기','ONE FINGER · LOOK AROUND'))}else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
 
 function updateResultCopy(){
   const success=roundResult==='success';
