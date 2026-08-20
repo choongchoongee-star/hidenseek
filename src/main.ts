@@ -265,9 +265,6 @@ let lastTouchEndTime = 0;
 let lastTouchEndX = Number.NEGATIVE_INFINITY;
 let lastTouchEndY = Number.NEGATIVE_INFINITY;
 let lastTouchEndTarget:EventTarget|null = null;
-let mobileTutorialComplete = false;
-let mobileTutorialStep = 0;
-const mobileHint = document.querySelector<HTMLElement>('#mobile-hint')!;
 const mobileSelection = document.querySelector<HTMLElement>('#mobile-selection')!;
 const mobileSubjectLabel = document.querySelector<HTMLElement>('#mobile-subject')!;
 const questionButton = document.querySelector<HTMLButtonElement>('#mark-question')!;
@@ -281,6 +278,7 @@ const ruleNotes=document.querySelector<HTMLElement>('#rule-notes')!;
 const ruleNotesToggle=document.querySelector<HTMLButtonElement>('#rule-notes-toggle')!;
 const ruleNoteRows=[...document.querySelectorAll<HTMLButtonElement>('[data-rule-note]')];
 const languageToggle=document.querySelector<HTMLButtonElement>('#language-toggle')!;
+const mobilePauseButton=document.querySelector<HTMLButtonElement>('#mobile-pause')!;
 const speedControls=document.querySelector<HTMLElement>('#speed-controls')!;
 const speedButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-game-speed]')];
 
@@ -296,6 +294,7 @@ function applyLanguage() {
   document.querySelectorAll<HTMLElement>('[data-ko][data-en]').forEach(element=>{element.textContent=element.dataset[language]??'';});
   languageToggle.textContent=language==='ko'?'KR':'EN';
   languageToggle.setAttribute('aria-label',language==='ko'?'Switch to English':'한국어로 전환');
+  mobilePauseButton.setAttribute('aria-label',copy('게임 일시정지','Pause game'));
   speedControls.setAttribute('aria-label',copy('게임 속도','Game speed'));
   subjects.forEach(subject=>{subject.inspectedSprite.material.map=inspectedTextures[language];subject.inspectedSprite.material.needsUpdate=true;});
   setParticipantCount(participantCount);updateSoundButtons();updateAttempts();updateFollowButton();
@@ -371,19 +370,6 @@ function applyMobileCamera() {
   camera.lookAt(target);
 }
 
-function setMobileHint(message:string) {
-  if(!touchMode||mobileTutorialComplete)return;
-  mobileHint.textContent=message;
-  mobileHint.classList.add('show');
-}
-
-function advanceMobileTutorial(step:'orbit'|'multi'|'select') {
-  if(mobileTutorialComplete)return;
-  if(step==='orbit'&&mobileTutorialStep===0) { mobileTutorialStep=1; setMobileHint(copy('두 손가락 · 이동과 줌','TWO FINGERS · MOVE & ZOOM')); }
-  if(step==='multi'&&mobileTutorialStep<=1) { mobileTutorialStep=2; setMobileHint(copy('참가자를 눌러 선택','TAP AN NPC · SELECT')); }
-  if(step==='select') { mobileTutorialStep=3; mobileTutorialComplete=true; mobileHint.classList.remove('show'); }
-}
-
 function selectSubject(subject:Subject|null) {
   selectedSubject=subject;
   hovered=subject;
@@ -391,7 +377,6 @@ function selectSubject(subject:Subject|null) {
   mobileSelection.classList.toggle('open',!!subject);
   if(subject) {
     mobileSubjectLabel.textContent=subject.name;
-    advanceMobileTutorial('select');
   }
   updateMarkButtons();
   updateFollowButton();
@@ -748,7 +733,6 @@ function moveTouchPointer(event:PointerEvent) {
       mobileSpherical.theta-=(point.x-previousX)*.007;
       mobileSpherical.phi=THREE.MathUtils.clamp(mobileSpherical.phi+(point.y-previousY)*.005,.45,1.28);
       applyMobileCamera();
-      advanceMobileTutorial('orbit');
     }
     return;
   }
@@ -767,7 +751,6 @@ function moveTouchPointer(event:PointerEvent) {
     if(previousGestureDistance>0) mobileSpherical.radius=THREE.MathUtils.clamp(mobileSpherical.radius*previousGestureDistance/distance,15,50);
     previousGestureCenter.copy(center);previousGestureDistance=distance;
     applyMobileCamera();
-    advanceMobileTutorial('multi');
   }
 }
 
@@ -928,7 +911,7 @@ function setAltCursorMode(value:boolean) {
   else if(playing&&!paused)requestGamePointerLock();
 }
 
-function startRound(){configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode){initializeMobileCamera();if(!mobileTutorialComplete)setMobileHint(copy('한 손가락 · 둘러보기','ONE FINGER · LOOK AROUND'))}else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
+function startRound(){configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode)initializeMobileCamera();else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
 
 function updateResultCopy(){
   const success=roundResult==='success';
@@ -942,7 +925,7 @@ function endRound(success:boolean){playing=false;paused=false;roundResult=succes
 
 function returnToStartScreen(){
   playing=false;paused=false;roundResult=null;restoreSystemCursor();cancelTouchPointers();setFollowSubject(null,false);selectSubject(null);
-  mobileHint.textContent='';mobileHint.classList.remove('show');subjects.forEach(subject=>subject.marker.material.opacity=0);
+  subjects.forEach(subject=>subject.marker.material.opacity=0);
   document.querySelector('#crosshair')!.classList.remove('locked');const targetLabel=document.querySelector<HTMLElement>('#target-label')!;targetLabel.textContent='';targetLabel.classList.remove('show');
   document.body.classList.remove('round-active','paused','selection-active','cursor-free');
   setRuleNotesOpen(false);
@@ -975,6 +958,7 @@ questionButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(s
 clearButton.addEventListener('click',()=>{if(selectedSubject)setSubjectMark(selectedSubject,selectedSubject.mark==='✓'?null:'✓')});
 followButton.addEventListener('click',()=>toggleFollow(selectedSubject));
 document.querySelector('#resume-button')!.addEventListener('click',()=>setPaused(false));
+mobilePauseButton.addEventListener('click',()=>setPaused(true));
 document.querySelector('#view-controls-button')!.addEventListener('click',()=>openControls('pause'));
 document.querySelector('#end-observation-button')!.addEventListener('click',returnToStartScreen);
 controlsCloseButton.addEventListener('click',closeControls);
