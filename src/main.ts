@@ -482,7 +482,7 @@ function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
 }
 
 function setRuleNotesOpen(value:boolean) {
-  if(!touchMode&&playing)value=true;
+  if(playing)value=true;
   ruleNotes.classList.toggle('open',value);ruleNotes.setAttribute('aria-hidden',String(!value));
   ruleNotesToggle.classList.toggle('show',!value);ruleNotesToggle.setAttribute('aria-expanded',String(value));
 }
@@ -525,7 +525,7 @@ function cycleRuleNote(ruleId:RuleNoteId) {
 }
 
 function resetRuleNotes() {
-  RULE_NOTE_ORDER.forEach(ruleId=>{ruleNoteMarks[ruleId]=null;updateRuleNote(ruleId);});setRuleNotesOpen(!touchMode);
+  RULE_NOTE_ORDER.forEach(ruleId=>{ruleNoteMarks[ruleId]=null;updateRuleNote(ruleId);});setRuleNotesOpen(true);
 }
 
 function randomWaypoint(out: THREE.Vector3) {

@@ -99,6 +99,25 @@ body:not(.touch-mode) .note-copy small { opacity: .78; }
 body:not(.touch-mode) .bell-note .note-copy b { color: #ff9d8f; }
 body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: rgba(244,241,232,.74); text-align: left; text-shadow: 0 2px 8px rgba(0,0,0,.95); opacity: 1; }
 
+/* Touch mission list: always visible, compact and transparent */
+.touch-mode .rule-notes-toggle { display: none; }
+.touch-mode .rule-notes { left: max(12px,env(safe-area-inset-left)); right: auto; top: calc(78px + env(safe-area-inset-top)); bottom: auto; width: min(280px,calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right))); max-height: none; padding: 0; overflow: visible; border-radius: 0; background: transparent; color: #f4f1e8; box-shadow: none; letter-spacing: .02em; transform: translateX(-10px); }
+.touch-mode.round-active .rule-notes.open { opacity: 1; visibility: visible; transform: translateX(0); }
+.touch-mode .rule-notes::after { display: none; }
+.touch-mode .rule-notes header { min-height: 0; padding: 0 0 7px; border: 0; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
+.touch-mode .rule-notes header b { color: var(--yellow); font-size: 13px; }
+.touch-mode .rule-notes header button { display: none; }
+.touch-mode .rule-note-list { display: grid; gap: 0; overflow: visible; }
+.touch-mode .rule-note { min-height: 44px; padding: 3px 0; border: 0; color: #f4f1e8; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
+.touch-mode .rule-note:active { color: var(--yellow-soft); }
+.touch-mode .note-index { opacity: .62; }
+.touch-mode .note-mark { border-color: rgba(244,241,232,.58); background: rgba(10,11,9,.2); box-shadow: 0 2px 8px rgba(0,0,0,.38); }
+.touch-mode .note-copy small { overflow: hidden; text-overflow: ellipsis; opacity: .8; }
+.touch-mode .bell-note .note-copy b { color: #ff9d8f; }
+.touch-mode .rule-notes footer { padding: 6px 0 0; border: 0; color: rgba(244,241,232,.74); text-align: left; text-shadow: 0 2px 8px rgba(0,0,0,.95); opacity: 1; }
+.touch-mode .desktop-note-help { display: none; }
+.touch-mode .mobile-note-help { display: inline; }
+
 /* Targeting and feedback */
 .crosshair { position: fixed; z-index: 5; left: 50%; top: 50%; width: 38px; height: 38px; transform: translate(-50%,-50%); pointer-events: none; transition: .15s; }
 .crosshair i { position: absolute; background: rgba(255,255,255,.68); }
@@ -234,11 +253,6 @@ kbd.wide-key { min-width: 80px; }
   .attempts-panel > span { display: none; }
   .attempts { margin-top: 0; }
   .attempt { width: 24px; }
-  .rule-notes-toggle { left: max(12px,env(safe-area-inset-left)); top: calc(78px + env(safe-area-inset-top)); min-height: 46px; }
-  .touch-mode .rule-notes { left: 0; right: 0; top: auto; bottom: 0; width: 100%; max-height: min(72vh,610px); padding-bottom: env(safe-area-inset-bottom); border-radius: 22px 22px 0 0; transform: translateY(110%); }
-  .touch-mode.round-active .rule-notes.open { transform: translateY(0); }
-  .touch-mode .desktop-note-help { display: none; }
-  .touch-mode .mobile-note-help { display: inline; }
   .toast { top: calc(82px + env(safe-area-inset-top)); font-size: 11px; white-space: normal; text-align: center; }
   .screen { padding: calc(24px + env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left)); }
   #start-screen { justify-content: flex-end; align-items: stretch; padding-top: calc(58px + env(safe-area-inset-top)); text-align: left; background: linear-gradient(0deg, rgba(10,11,9,.99) 0 46%, rgba(10,11,9,.72) 72%, rgba(10,11,9,.18) 100%); }
