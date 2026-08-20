@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import './style.css';
 
 type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow' | 'greetingWave' | 'turnSpin';
+type SpatialRuleId = 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow';
 type RuleNoteId = RuleId | 'bell';
 type ActionName = 'jump' | 'wave' | 'spin' | 'bow' | 'sit' | 'kick';
 type SubjectMark = '?' | '✓' | null;
@@ -37,6 +38,8 @@ interface Subject {
   bellObeys: boolean;
   obeys: Record<RuleId, boolean>;
   waypoint: THREE.Vector3;
+  landmarkRoute: SpatialRuleId[];
+  randomWaypointDue: boolean;
   speed: number;
   action: ActionName | null;
   actionTime: number;
@@ -60,6 +63,7 @@ const RULES: RuleDefinition[] = [
   { id:'turnSpin', action:'spin', label:{ko:'방향 전환 회전',en:'TURN SPIN'}, note:{ko:'이동 목표 도착 → 회전',en:'Reach a waypoint → SPIN'} },
 ];
 const PARTICIPANT_OPTIONS = [6,9,12,24] as const;
+const SPATIAL_RULE_IDS:SpatialRuleId[]=['centerSit','edgeJump','bellZoneKick','lampBow'];
 const SUBJECT_NAMES = ['영수','영호','영식','영철','광수','상철','민수','준호','태수','성훈','진우','동진','영숙','정숙','순자','영자','옥순','현숙','지영','수진','민지','혜진','은영','보람'];
 const ARENA_SIZES:Record<typeof PARTICIPANT_OPTIONS[number],number>={6:30,9:38,12:44,24:58};
 let RULE_NOTE_ORDER:RuleNoteId[]=[...RULES.slice(0,4).map(rule=>rule.id),'bell'];
@@ -220,7 +224,7 @@ function makeSubject(id: number): Subject {
   root.traverse(child=>{ if((child as THREE.Mesh).isMesh){ child.userData.subjectId=id; pickables.push(child); }});
   world.add(root);
   const cooldowns=Object.fromEntries(RULES.map(rule=>[rule.id,0])) as Record<RuleId,number>;
-  return { id,name,root,body,upperBody,leftArm,rightArm,leftLeg:left.leg,rightLeg:right.leg,leftKnee:left.knee,rightKnee:right.knee,marker,markSprite,inspectedSprite,mark:null,inspected:false,hat,red:shirt===0xc94f43,blue:shirt===0x325b82,yellow:shirt===0xc8a642,bellObeys:false,obeys:{} as Record<RuleId,boolean>,waypoint:new THREE.Vector3(),speed:1.7+Math.random()*.6,action:null,actionTime:0,cooldowns,lastCenterInside:false,lastEdgeInside:false,lastBellZoneInside:false,lastLampZoneInside:false };
+  return { id,name,root,body,upperBody,leftArm,rightArm,leftLeg:left.leg,rightLeg:right.leg,leftKnee:left.knee,rightKnee:right.knee,marker,markSprite,inspectedSprite,mark:null,inspected:false,hat,red:shirt===0xc94f43,blue:shirt===0x325b82,yellow:shirt===0xc8a642,bellObeys:false,obeys:{} as Record<RuleId,boolean>,waypoint:new THREE.Vector3(),landmarkRoute:[],randomWaypointDue:false,speed:1.7+Math.random()*.6,action:null,actionTime:0,cooldowns,lastCenterInside:false,lastEdgeInside:false,lastBellZoneInside:false,lastLampZoneInside:false };
 }
 for(let i=0;i<24;i++) subjects.push(makeSubject(i));
 
@@ -531,6 +535,38 @@ function randomWaypoint(out: THREE.Vector3) {
   if(Math.abs(out.x)<centerTriggerRadius*1.15 && Math.abs(out.z)<centerTriggerRadius*1.15 && Math.random()<.45) out.multiplyScalar(1.5);
 }
 
+function landmarkWaypoint(ruleId:SpatialRuleId,out:THREE.Vector3) {
+  if(ruleId==='centerSit') {
+    const angle=Math.random()*Math.PI*2,radius=Math.random()*centerTriggerRadius*.45;
+    out.set(Math.cos(angle)*radius,0,Math.sin(angle)*radius);return;
+  }
+  if(ruleId==='edgeJump') {
+    const edge=arenaHalf*.74,tangent=THREE.MathUtils.randFloat(-arenaHalf*.48,arenaHalf*.48);
+    const side=Math.floor(Math.random()*4);
+    out.set(side<2?(side===0?-edge:edge):tangent,0,side<2?tangent:(side===2?-edge:edge));return;
+  }
+  if(ruleId==='bellZoneKick') {
+    const radius=Math.max(2.8,5*arenaScale),bellZ=-25*arenaScale;
+    out.set(THREE.MathUtils.randFloat(-radius*.42,radius*.42),0,bellZ+radius*THREE.MathUtils.randFloat(.32,.5));return;
+  }
+  const radius=Math.max(2.8,4.5*arenaScale),lamp=24*arenaScale;
+  const signX=Math.random()<.5?-1:1,signZ=Math.random()<.5?-1:1;
+  out.set(signX*(lamp-radius*THREE.MathUtils.randFloat(.32,.46)),0,signZ*(lamp-radius*THREE.MathUtils.randFloat(.32,.46)));
+}
+
+function chooseNextWaypoint(subject:Subject) {
+  const landmarks=SPATIAL_RULE_IDS.filter(ruleId=>activeRuleIds.has(ruleId));
+  if(!landmarks.length) {randomWaypoint(subject.waypoint);return;}
+  if(subject.randomWaypointDue) {
+    randomWaypoint(subject.waypoint);subject.randomWaypointDue=false;
+    if(!subject.landmarkRoute.length)subject.landmarkRoute=shuffle(landmarks);
+    return;
+  }
+  if(!subject.landmarkRoute.length)subject.landmarkRoute=shuffle(landmarks);
+  landmarkWaypoint(subject.landmarkRoute.pop()!,subject.waypoint);
+  subject.randomWaypointDue=true;
+}
+
 function configureArena() {
   arenaSize=ARENA_SIZES[participantCount];arenaHalf=arenaSize/2;arenaScale=arenaSize/58;centerTriggerRadius=5.6*arenaScale;
   environment.scale.set(arenaScale,1,arenaScale);
@@ -589,7 +625,7 @@ function configureRound() {
   assignBalancedNoise(null);
   const columns=participantCount<=9?3:participantCount<=12?4:6;const rows=Math.ceil(participantCount/columns);
   subjects.forEach(s=>{
-    randomWaypoint(s.waypoint);s.action=null;s.actionTime=0;resetActionPose(s);s.marker.material.opacity=0;s.marker.material.color.set(0xffffff);s.inspected=false;s.inspectedSprite.material.opacity=0;setSubjectMark(s,null);
+    s.landmarkRoute=[];s.randomWaypointDue=Math.random()<.35;chooseNextWaypoint(s);s.action=null;s.actionTime=0;resetActionPose(s);s.marker.material.opacity=0;s.marker.material.color.set(0xffffff);s.inspected=false;s.inspectedSprite.material.opacity=0;setSubjectMark(s,null);
     Object.keys(s.cooldowns).forEach(k=>s.cooldowns[k as RuleId]=0);s.lastCenterInside=false;s.lastEdgeInside=false;s.lastBellZoneInside=false;s.lastLampZoneInside=false;
   });
   activeSubjects.forEach((subject,index)=>subject.root.position.set((index%columns-(columns-1)/2)*6.5,0,(Math.floor(index/columns)-(rows-1)/2)*7));
@@ -616,10 +652,12 @@ function validateRoundConfiguration() {
 function shuffle<T>(items:T[]) { return [...items].sort(()=>Math.random()-.5); }
 
 function trigger(subject:Subject, ruleId:RuleId) {
-  if(!activeRuleIds.has(ruleId))return;
-  if(subject.cooldowns[ruleId]>0 || subject.action) return;
+  if(!activeRuleIds.has(ruleId))return true;
+  if(subject.cooldowns[ruleId]>0)return true;
+  if(subject.action)return !subject.obeys[ruleId];
   subject.cooldowns[ruleId]=ruleId==='greetingWave'?5:['centerSit','edgeJump','bellZoneKick','lampBow','turnSpin'].includes(ruleId)?6:3.5;
   if(subject.obeys[ruleId]) { subject.action=RULES.find(r=>r.id===ruleId)!.action; subject.actionTime=0; }
+  return true;
 }
 
 function ringBell() {
@@ -642,7 +680,7 @@ function playBellSound() {
 function updateSubject(s:Subject,dt:number) {
   (Object.keys(s.cooldowns) as RuleId[]).forEach(id=>s.cooldowns[id]=Math.max(0,s.cooldowns[id]-dt));
   const distance=s.root.position.distanceTo(s.waypoint);
-  if(distance<1.2){trigger(s,'turnSpin');randomWaypoint(s.waypoint)}
+  if(distance<1.2&&trigger(s,'turnSpin'))chooseNextWaypoint(s);
   const dir=s.waypoint.clone().sub(s.root.position); dir.y=0; dir.normalize();
   const moveFactor=s.action==='spin'?.18:s.action?.42:1;
   s.root.position.addScaledVector(dir,s.speed*dt*moveFactor);
@@ -650,14 +688,14 @@ function updateSubject(s:Subject,dt:number) {
   const gait=Math.sin(roundTime*s.speed*5+s.id)*.1*moveFactor;
   s.body.rotation.z=gait; s.leftArm.rotation.x=gait*2; s.rightArm.rotation.x=-gait*2;
   const inCenter=Math.hypot(s.root.position.x,s.root.position.z)<centerTriggerRadius;
-  if(inCenter&&!s.lastCenterInside) trigger(s,'centerSit'); s.lastCenterInside=inCenter;
+  s.lastCenterInside=inCenter?(s.lastCenterInside||trigger(s,'centerSit')):false;
   const inEdge=Math.max(Math.abs(s.root.position.x),Math.abs(s.root.position.z))>arenaHalf*.62;
-  if(inEdge&&!s.lastEdgeInside)trigger(s,'edgeJump');s.lastEdgeInside=inEdge;
+  s.lastEdgeInside=inEdge?(s.lastEdgeInside||trigger(s,'edgeJump')):false;
   const inBellZone=Math.hypot(s.root.position.x,s.root.position.z+25*arenaScale)<Math.max(2.8,5*arenaScale);
-  if(inBellZone&&!s.lastBellZoneInside)trigger(s,'bellZoneKick');s.lastBellZoneInside=inBellZone;
+  s.lastBellZoneInside=inBellZone?(s.lastBellZoneInside||trigger(s,'bellZoneKick')):false;
   const lampDistance=Math.min(...([[-24,-24],[24,-24],[-24,24],[24,24]] as [number,number][]).map(([x,z])=>Math.hypot(s.root.position.x-x*arenaScale,s.root.position.z-z*arenaScale)));
   const inLampZone=lampDistance<Math.max(2.8,4.5*arenaScale);
-  if(inLampZone&&!s.lastLampZoneInside)trigger(s,'lampBow');s.lastLampZoneInside=inLampZone;
+  s.lastLampZoneInside=inLampZone?(s.lastLampZoneInside||trigger(s,'lampBow')):false;
   if(s.action) animateAction(s,dt);
 }
 
