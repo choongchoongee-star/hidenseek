@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import './style.css';
 
-type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'centerClap' | 'edgeJump' | 'bellZoneCheer' | 'lampBow' | 'greetingWave' | 'turnSpin';
+type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow' | 'greetingWave' | 'turnSpin';
 type RuleNoteId = RuleId | 'bell';
-type ActionName = 'jump' | 'wave' | 'spin' | 'bow' | 'clap' | 'cheer';
+type ActionName = 'jump' | 'wave' | 'spin' | 'bow' | 'sit' | 'kick';
 type SubjectMark = '?' | '✓' | null;
 type RuleNoteMark = '?' | '✓' | 'strike' | null;
 type ControlsOrigin = 'start' | 'pause';
@@ -18,8 +18,13 @@ interface Subject {
   name: string;
   root: THREE.Group;
   body: THREE.Group;
+  upperBody: THREE.Group;
   leftArm: THREE.Group;
   rightArm: THREE.Group;
+  leftLeg: THREE.Group;
+  rightLeg: THREE.Group;
+  leftKnee: THREE.Group;
+  rightKnee: THREE.Group;
   marker: THREE.Sprite;
   markSprite: THREE.Sprite;
   inspectedSprite: THREE.Sprite;
@@ -47,9 +52,9 @@ const RULES: RuleDefinition[] = [
   { id:'blueSpin', action:'spin', stimulus:'blue', label:{ko:'파랑 회전',en:'BLUE SPIN'}, note:{ko:'파란 옷 근처 → 회전',en:'Near a blue shirt → SPIN'} },
   { id:'yellowWave', action:'wave', stimulus:'yellow', label:{ko:'노랑 인사',en:'YELLOW WAVE'}, note:{ko:'노란 옷 근처 → 손 흔들기',en:'Near a yellow shirt → WAVE'} },
   { id:'hatBow', action:'bow', stimulus:'hat', label:{ko:'모자에게 인사',en:'HAT BOW'}, note:{ko:'모자 쓴 사람 근처 → 허리 숙이기',en:'Near a hat → BOW'} },
-  { id:'centerClap', action:'clap', label:{ko:'중앙 박수',en:'CENTER CLAP'}, note:{ko:'중앙 구역 진입 → 박수',en:'Enter the center → CLAP'} },
+  { id:'centerSit', action:'sit', label:{ko:'중앙 앉기',en:'CENTER SIT'}, note:{ko:'중앙 구역 진입 → 앉기',en:'Enter the center → SIT'} },
   { id:'edgeJump', action:'jump', label:{ko:'가장자리 점프',en:'EDGE JUMP'}, note:{ko:'맵 가장자리 진입 → 점프',en:'Enter the map edge → JUMP'} },
-  { id:'bellZoneCheer', action:'cheer', label:{ko:'종탑 만세',en:'BELL TOWER CHEER'}, note:{ko:'종탑 근처 진입 → 만세',en:'Approach the bell tower → CHEER'} },
+  { id:'bellZoneKick', action:'kick', label:{ko:'종탑 발차기',en:'BELL TOWER KICK'}, note:{ko:'종탑 근처 진입 → 발차기',en:'Approach the bell tower → KICK'} },
   { id:'lampBow', action:'bow', label:{ko:'조명에게 인사',en:'LAMP BOW'}, note:{ko:'모서리 조명 근처 → 허리 숙이기',en:'Approach a corner lamp → BOW'} },
   { id:'greetingWave', action:'wave', label:{ko:'마주보기 인사',en:'GREETING WAVE'}, note:{ko:'서로 마주봄 → 둘 다 손 흔들기',en:'Face each other → both WAVE'} },
   { id:'turnSpin', action:'spin', label:{ko:'방향 전환 회전',en:'TURN SPIN'}, note:{ko:'이동 목표 도착 → 회전',en:'Reach a waypoint → SPIN'} },
@@ -60,7 +65,7 @@ const ARENA_SIZES:Record<typeof PARTICIPANT_OPTIONS[number],number>={6:30,9:38,1
 let RULE_NOTE_ORDER:RuleNoteId[]=[...RULES.slice(0,4).map(rule=>rule.id),'bell'];
 const ruleNoteMarks={} as Record<RuleNoteId,RuleNoteMark>;
 [...RULES.map(rule=>rule.id),'bell' as const].forEach(ruleId=>ruleNoteMarks[ruleId]=null);
-const ACTION_LABELS:Record<ActionName,LocalizedCopy>={jump:{ko:'점프',en:'JUMP'},wave:{ko:'손 흔들기',en:'WAVE'},spin:{ko:'회전',en:'SPIN'},bow:{ko:'허리 숙이기',en:'BOW'},clap:{ko:'박수',en:'CLAP'},cheer:{ko:'만세',en:'CHEER'}};
+const ACTION_LABELS:Record<ActionName,LocalizedCopy>={jump:{ko:'점프',en:'JUMP'},wave:{ko:'손 흔들기',en:'WAVE'},spin:{ko:'회전',en:'SPIN'},bow:{ko:'허리 숙이기',en:'BOW'},sit:{ko:'앉기',en:'SIT'},kick:{ko:'발차기',en:'KICK'}};
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const touchMode = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).has('touch');
@@ -182,23 +187,28 @@ function makeSubject(id: number): Subject {
   const name=SUBJECT_NAMES[id];
   const root = new THREE.Group(); root.userData.subjectId = id;
   const body = new THREE.Group(); root.add(body);
+  const upperBody = new THREE.Group(); upperBody.position.y=1.78;body.add(upperBody);
   const shirt = id < 3 ? 0xc94f43 : shirtColors[id % shirtColors.length];
   const hat = id % 3 === 1 || id === 10;
   const skin = skinColors[id % skinColors.length];
-  const torso = mesh(new THREE.BoxGeometry(1.18,1.55,.72),mat(shirt),body,2.55); torso.userData.subjectId=id;
-  const head = mesh(new THREE.BoxGeometry(.88,.9,.78),mat(skin),body,3.78); head.userData.subjectId=id;
-  const hair = mesh(new THREE.BoxGeometry(.92,.25,.82),mat(hairColors[id%hairColors.length]),body,4.2); hair.userData.subjectId=id;
-  const leftArm = new THREE.Group(); leftArm.position.set(-.76,3.08,0); body.add(leftArm);
-  const rightArm = new THREE.Group(); rightArm.position.set(.76,3.08,0); body.add(rightArm);
+  const torso = mesh(new THREE.BoxGeometry(1.18,1.55,.72),mat(shirt),upperBody,.77); torso.userData.subjectId=id;
+  const head = mesh(new THREE.BoxGeometry(.88,.9,.78),mat(skin),upperBody,2); head.userData.subjectId=id;
+  const hair = mesh(new THREE.BoxGeometry(.92,.25,.82),mat(hairColors[id%hairColors.length]),upperBody,2.42); hair.userData.subjectId=id;
+  const leftArm = new THREE.Group(); leftArm.position.set(-.76,1.3,0); upperBody.add(leftArm);
+  const rightArm = new THREE.Group(); rightArm.position.set(.76,1.3,0); upperBody.add(rightArm);
   mesh(new THREE.BoxGeometry(.32,1.45,.36),mat(skin),leftArm,-.67);
   mesh(new THREE.BoxGeometry(.32,1.45,.36),mat(skin),rightArm,-.67);
-  for (const side of [-1,1]) {
-    const leg = new THREE.Group(); leg.position.set(side*.34,1.75,0); body.add(leg);
-    mesh(new THREE.BoxGeometry(.48,1.7,.52),mat(pantsColors[id%pantsColors.length]),leg,-.8);
-  }
+  const makeLeg=(side:number)=>{
+    const leg=new THREE.Group();leg.position.set(side*.34,1.75,0);body.add(leg);
+    mesh(new THREE.BoxGeometry(.48,.82,.52),mat(pantsColors[id%pantsColors.length]),leg,-.38);
+    const knee=new THREE.Group();knee.position.y=-.78;leg.add(knee);
+    mesh(new THREE.BoxGeometry(.48,.9,.52),mat(pantsColors[id%pantsColors.length]),knee,-.43);
+    return {leg,knee};
+  };
+  const left=makeLeg(-1),right=makeLeg(1);
   if (hat) {
-    const brim=mesh(new THREE.CylinderGeometry(.65,.65,.12,12),mat(0x272722),body,4.43); brim.userData.subjectId=id;
-    const cap=mesh(new THREE.CylinderGeometry(.44,.52,.42,12),mat(id%2?0xd3ac3b:0x454c3f),body,4.67); cap.userData.subjectId=id;
+    const brim=mesh(new THREE.CylinderGeometry(.65,.65,.12,12),mat(0x272722),upperBody,2.65); brim.userData.subjectId=id;
+    const cap=mesh(new THREE.CylinderGeometry(.44,.52,.42,12),mat(id%2?0xd3ac3b:0x454c3f),upperBody,2.89); cap.userData.subjectId=id;
   }
   const marker = new THREE.Sprite(new THREE.SpriteMaterial({map:makeMarkerTexture(name),transparent:true,depthTest:false,opacity:0}));
   marker.scale.set(3.2,1.2,1); marker.position.y=6.45; root.add(marker);
@@ -210,7 +220,7 @@ function makeSubject(id: number): Subject {
   root.traverse(child=>{ if((child as THREE.Mesh).isMesh){ child.userData.subjectId=id; pickables.push(child); }});
   world.add(root);
   const cooldowns=Object.fromEntries(RULES.map(rule=>[rule.id,0])) as Record<RuleId,number>;
-  return { id,name,root,body,leftArm,rightArm,marker,markSprite,inspectedSprite,mark:null,inspected:false,hat,red:shirt===0xc94f43,blue:shirt===0x325b82,yellow:shirt===0xc8a642,bellObeys:false,obeys:{} as Record<RuleId,boolean>,waypoint:new THREE.Vector3(),speed:1.7+Math.random()*.6,action:null,actionTime:0,cooldowns,lastCenterInside:false,lastEdgeInside:false,lastBellZoneInside:false,lastLampZoneInside:false };
+  return { id,name,root,body,upperBody,leftArm,rightArm,leftLeg:left.leg,rightLeg:right.leg,leftKnee:left.knee,rightKnee:right.knee,marker,markSprite,inspectedSprite,mark:null,inspected:false,hat,red:shirt===0xc94f43,blue:shirt===0x325b82,yellow:shirt===0xc8a642,bellObeys:false,obeys:{} as Record<RuleId,boolean>,waypoint:new THREE.Vector3(),speed:1.7+Math.random()*.6,action:null,actionTime:0,cooldowns,lastCenterInside:false,lastEdgeInside:false,lastBellZoneInside:false,lastLampZoneInside:false };
 }
 for(let i=0;i<24;i++) subjects.push(makeSubject(i));
 
@@ -608,7 +618,7 @@ function shuffle<T>(items:T[]) { return [...items].sort(()=>Math.random()-.5); }
 function trigger(subject:Subject, ruleId:RuleId) {
   if(!activeRuleIds.has(ruleId))return;
   if(subject.cooldowns[ruleId]>0 || subject.action) return;
-  subject.cooldowns[ruleId]=ruleId==='greetingWave'?5:['centerClap','edgeJump','bellZoneCheer','lampBow','turnSpin'].includes(ruleId)?6:3.5;
+  subject.cooldowns[ruleId]=ruleId==='greetingWave'?5:['centerSit','edgeJump','bellZoneKick','lampBow','turnSpin'].includes(ruleId)?6:3.5;
   if(subject.obeys[ruleId]) { subject.action=RULES.find(r=>r.id===ruleId)!.action; subject.actionTime=0; }
 }
 
@@ -640,11 +650,11 @@ function updateSubject(s:Subject,dt:number) {
   const gait=Math.sin(roundTime*s.speed*5+s.id)*.1*moveFactor;
   s.body.rotation.z=gait; s.leftArm.rotation.x=gait*2; s.rightArm.rotation.x=-gait*2;
   const inCenter=Math.hypot(s.root.position.x,s.root.position.z)<centerTriggerRadius;
-  if(inCenter&&!s.lastCenterInside) trigger(s,'centerClap'); s.lastCenterInside=inCenter;
+  if(inCenter&&!s.lastCenterInside) trigger(s,'centerSit'); s.lastCenterInside=inCenter;
   const inEdge=Math.max(Math.abs(s.root.position.x),Math.abs(s.root.position.z))>arenaHalf*.62;
   if(inEdge&&!s.lastEdgeInside)trigger(s,'edgeJump');s.lastEdgeInside=inEdge;
   const inBellZone=Math.hypot(s.root.position.x,s.root.position.z+25*arenaScale)<Math.max(2.8,5*arenaScale);
-  if(inBellZone&&!s.lastBellZoneInside)trigger(s,'bellZoneCheer');s.lastBellZoneInside=inBellZone;
+  if(inBellZone&&!s.lastBellZoneInside)trigger(s,'bellZoneKick');s.lastBellZoneInside=inBellZone;
   const lampDistance=Math.min(...([[-24,-24],[24,-24],[-24,24],[24,24]] as [number,number][]).map(([x,z])=>Math.hypot(s.root.position.x-x*arenaScale,s.root.position.z-z*arenaScale)));
   const inLampZone=lampDistance<Math.max(2.8,4.5*arenaScale);
   if(inLampZone&&!s.lastLampZoneInside)trigger(s,'lampBow');s.lastLampZoneInside=inLampZone;
@@ -653,20 +663,32 @@ function updateSubject(s:Subject,dt:number) {
 
 function resetActionPose(s:Subject) {
   s.body.position.y=0;s.body.rotation.set(0,0,0);
+  s.upperBody.position.y=1.78;s.upperBody.rotation.set(0,0,0);
   s.leftArm.rotation.set(0,0,0);s.rightArm.rotation.set(0,0,0);
+  s.leftLeg.position.set(-.34,1.75,0);s.rightLeg.position.set(.34,1.75,0);
+  s.leftLeg.rotation.set(0,0,0);s.rightLeg.rotation.set(0,0,0);
+  s.leftKnee.rotation.set(0,0,0);s.rightKnee.rotation.set(0,0,0);
 }
 
 function animateAction(s:Subject,dt:number) {
   s.actionTime+=dt; const t=s.actionTime;
+  const heldPose=THREE.MathUtils.smoothstep(Math.min(t/.22,(1.25-t)/.22),0,1);
   if(s.action==='jump') s.body.position.y=Math.max(0,Math.sin(Math.min(t/1.2,1)*Math.PI)*2.25);
   if(s.action==='wave') { s.rightArm.rotation.z=-2.55; s.rightArm.rotation.x=Math.sin(t*13)*.7; }
   if(s.action==='spin') s.body.rotation.y=t*Math.PI*2.1;
-  if(s.action==='bow')s.body.rotation.x=Math.sin(Math.min(t/1.2,1)*Math.PI)*.72;
-  if(s.action==='clap') {
-    const clap=Math.abs(Math.sin(t*12));s.leftArm.rotation.x=s.rightArm.rotation.x=-1.25;
-    s.leftArm.rotation.z=-.2-clap*.5;s.rightArm.rotation.z=.2+clap*.5;
+  if(s.action==='bow')s.upperBody.rotation.x=Math.sin(Math.min(t/1.2,1)*Math.PI)*.82;
+  if(s.action==='sit') {
+    s.upperBody.position.y=THREE.MathUtils.lerp(1.78,.95,heldPose);
+    s.leftLeg.position.y=s.rightLeg.position.y=THREE.MathUtils.lerp(1.75,.95,heldPose);
+    s.leftLeg.rotation.x=s.rightLeg.rotation.x=-Math.PI/2*heldPose;
+    s.leftLeg.rotation.z=.12*heldPose;s.rightLeg.rotation.z=-.12*heldPose;
+    s.leftKnee.rotation.x=s.rightKnee.rotation.x=Math.PI/2*heldPose;
   }
-  if(s.action==='cheer') {s.leftArm.rotation.z=2.5;s.rightArm.rotation.z=-2.5;s.body.position.y=Math.abs(Math.sin(t*7))*.35;}
+  if(s.action==='kick') {
+    s.leftLeg.rotation.x=-1.38*heldPose;
+    s.leftLeg.rotation.z=-.12*heldPose;
+    s.leftKnee.rotation.x=.2*heldPose;
+  }
   if(t>1.25){s.action=null;s.actionTime=0;resetActionPose(s);}
 }
 
