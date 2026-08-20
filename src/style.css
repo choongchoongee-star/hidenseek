@@ -61,7 +61,6 @@ button:focus-visible { outline: 2px solid var(--yellow-soft); outline-offset: 3p
 .rule-notes::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .15; background: repeating-linear-gradient(0deg, transparent 0 38px, rgba(64,70,65,.45) 39px); }
 .rule-notes header, .rule-note-list, .rule-notes footer { position: relative; z-index: 1; }
 .rule-notes header { min-height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 11px 12px 10px 17px; border-bottom: 2px solid rgba(29,28,22,.55); }
-.rule-notes header span { display: block; margin-bottom: 2px; font: 500 10px 'DM Mono'; letter-spacing: .12em; opacity: .52; }
 .rule-notes header b { font-size: 16px; }
 .rule-notes header button { width: 44px; height: 44px; padding: 0; border: 0; background: rgba(29,28,22,.08); color: #1d1c16; font-size: 23px; cursor: pointer; }
 .rule-note-list { overflow-y: auto; }
@@ -88,8 +87,7 @@ button:focus-visible { outline: 2px solid var(--yellow-soft); outline-offset: 3p
 body:not(.touch-mode) .rule-notes { width: 320px; max-height: none; overflow: visible; background: transparent; color: #f4f1e8; box-shadow: none; }
 body:not(.touch-mode) .rule-notes::after { display: none; }
 body:not(.touch-mode) .rule-notes header { min-height: 0; padding: 0 0 10px; border: 0; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
-body:not(.touch-mode) .rule-notes header span { color: var(--yellow); opacity: .88; }
-body:not(.touch-mode) .rule-notes header b { font-size: 15px; }
+body:not(.touch-mode) .rule-notes header b { color: var(--yellow); font-size: 15px; }
 body:not(.touch-mode) .rule-notes header button { display: none; }
 body:not(.touch-mode) .rule-note-list { display: grid; gap: 2px; overflow: visible; }
 body:not(.touch-mode) .rule-note { min-height: 48px; padding: 4px 0; border: 0; color: #f4f1e8; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
