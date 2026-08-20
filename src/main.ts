@@ -291,7 +291,7 @@ function readLanguage():Language {
 function applyLanguage() {
   document.documentElement.lang=language;
   document.querySelectorAll<HTMLElement>('[data-ko][data-en]').forEach(element=>{element.textContent=element.dataset[language]??'';});
-  languageToggle.textContent=language==='ko'?'EN':'한국어';
+  languageToggle.textContent=language==='ko'?'KR':'EN';
   languageToggle.setAttribute('aria-label',language==='ko'?'Switch to English':'한국어로 전환');
   speedControls.setAttribute('aria-label',copy('게임 속도','Game speed'));
   subjects.forEach(subject=>{subject.inspectedSprite.material.map=inspectedTextures[language];subject.inspectedSprite.material.needsUpdate=true;});
