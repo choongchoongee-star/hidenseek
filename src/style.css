@@ -24,10 +24,7 @@ button:focus-visible { outline: 2px solid var(--yellow-soft); outline-offset: 3p
 
 /* Gameplay HUD */
 .hud { position: fixed; z-index: 4; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .1em; color: rgba(244, 241, 232, .72); }
-.top-hud { z-index: 11; top: 0; left: 0; width: 100%; padding: 22px 26px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; background: linear-gradient(180deg, rgba(9, 10, 8, .64), transparent); }
-.brand { display: flex; align-items: baseline; gap: 14px; text-shadow: 0 2px 14px rgba(0,0,0,.6); }
-.brand b { color: var(--yellow); font: 700 16px 'Space Grotesk', sans-serif; letter-spacing: .02em; }
-.brand span { font-size: 10px; opacity: .58; }
+.top-hud { z-index: 11; top: 0; left: 0; width: 100%; padding: 22px 26px; display: flex; align-items: center; justify-content: flex-end; pointer-events: none; background: linear-gradient(180deg, rgba(9, 10, 8, .64), transparent); }
 .top-actions { display: flex; align-items: center; gap: 7px; pointer-events: auto; }
 .sound-toggle, .pause-sound-toggle, .language-toggle { min-height: 38px; padding: 0 12px; border: 0; background: rgba(18, 19, 16, .78); color: #f4f1e8; font: 500 10px 'Noto Sans KR', 'DM Mono'; letter-spacing: .04em; backdrop-filter: blur(12px); cursor: pointer; }
 .sound-toggle::before { content: '◖'; margin-right: 6px; color: var(--yellow); }
@@ -230,9 +227,6 @@ kbd.wide-key { min-width: 80px; }
 
 @media (max-width: 700px) {
   .top-hud { padding: calc(12px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 14px max(12px,env(safe-area-inset-left)); align-items: flex-start; }
-  .brand { display: block; padding-top: 8px; }
-  .brand b { display: block; font-size: 14px; }
-  .brand span { display: none; }
   .top-actions { gap: 4px; }
   .sound-toggle, .language-toggle, .status { min-width: 44px; min-height: 44px; padding: 0 9px; }
   .sound-toggle::before { margin-right: 4px; }
