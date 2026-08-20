@@ -240,7 +240,9 @@ let oddId = 0;
 let attempts = 3;
 let playing = false;
 let paused = false;
-let soundEnabled = true;
+let soundVolume=readSoundVolume();
+let lastAudibleVolume=soundVolume>0?soundVolume:.65;
+let soundEnabled=soundVolume>0;
 let pointerLockAcquired = false;
 let pointerLockRequestId = 0;
 let pointerLockReleaseTimers: number[] = [];
@@ -296,12 +298,23 @@ const languageToggle=document.querySelector<HTMLButtonElement>('#language-toggle
 const mobilePauseButton=document.querySelector<HTMLButtonElement>('#mobile-pause')!;
 const speedControls=document.querySelector<HTMLElement>('#speed-controls')!;
 const speedButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-game-speed]')];
+const volumeSliders=[...document.querySelectorAll<HTMLInputElement>('.volume-slider')];
+const volumeOutputs=[...document.querySelectorAll<HTMLOutputElement>('.volume-control output')];
 
 function copy(ko:string,en:string){return language==='ko'?ko:en;}
 
 function readLanguage():Language {
   try { return localStorage.getItem('the-odd-one-language')==='en'?'en':'ko'; }
   catch { return 'ko'; }
+}
+
+function readSoundVolume() {
+  try {
+    const raw=localStorage.getItem('the-odd-one-volume');
+    if(raw===null)return .65;
+    const stored=Number(raw);
+    return Number.isFinite(stored)&&stored>=0&&stored<=1?stored:.65;
+  } catch { return .65; }
 }
 
 function applyLanguage() {
@@ -673,7 +686,7 @@ function ringBell() {
 function playBellSound() {
   if(!soundEnabled)return;
   const AudioCtx=window.AudioContext || (window as typeof window & {webkitAudioContext:typeof AudioContext}).webkitAudioContext;
-  const ctx=new AudioCtx(); const gain=ctx.createGain(); gain.connect(ctx.destination); gain.gain.setValueAtTime(.15,ctx.currentTime); gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+1.5);
+  const ctx=new AudioCtx(); const gain=ctx.createGain(); gain.connect(ctx.destination); gain.gain.setValueAtTime(.15*soundVolume,ctx.currentTime); gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+1.5);
   [523.25,659.25,783.99].forEach((freq,i)=>{const osc=ctx.createOscillator();osc.type='sine';osc.frequency.value=freq;osc.connect(gain);osc.start(ctx.currentTime+i*.035);osc.stop(ctx.currentTime+1.5);});
 }
 
@@ -903,9 +916,19 @@ function updateSoundButtons() {
   hudButton.textContent=soundEnabled?copy('소리','SOUND'):copy('음소거','MUTED');
   pauseButton.textContent=soundEnabled?copy('소리 켜짐','SOUND ON'):copy('소리 꺼짐','SOUND OFF');
   for(const button of [hudButton,pauseButton]) {button.classList.toggle('muted',!soundEnabled);button.setAttribute('aria-pressed',String(soundEnabled));button.setAttribute('aria-label',soundEnabled?copy('소리 끄기','Turn sound off'):copy('소리 켜기','Turn sound on'));}
+  const percent=Math.round(soundVolume*100);
+  volumeSliders.forEach(slider=>{slider.value=String(percent);slider.setAttribute('aria-label',copy('음량','Volume'));slider.setAttribute('aria-valuetext',`${percent}%`);});
+  volumeOutputs.forEach(output=>output.textContent=`${percent}%`);
 }
 
-function toggleSound(){soundEnabled=!soundEnabled;updateSoundButtons()}
+function setSoundVolume(volume:number) {
+  soundVolume=THREE.MathUtils.clamp(volume,0,1);soundEnabled=soundVolume>0;
+  if(soundEnabled)lastAudibleVolume=soundVolume;
+  try {localStorage.setItem('the-odd-one-volume',String(soundVolume));} catch { /* Keep the current session volume. */ }
+  updateSoundButtons();
+}
+
+function toggleSound(){setSoundVolume(soundEnabled?0:lastAudibleVolume)}
 
 function setSystemCursorOverride(visible:boolean) {
   for(const element of [document.documentElement,document.body,canvas]) {
@@ -1030,6 +1053,7 @@ document.querySelector('#view-controls-button')!.addEventListener('click',()=>op
 document.querySelector('#end-observation-button')!.addEventListener('click',returnToStartScreen);
 controlsCloseButton.addEventListener('click',closeControls);
 document.querySelectorAll('#sound-toggle,#pause-sound-toggle').forEach(button=>button.addEventListener('click',toggleSound));
+volumeSliders.forEach(slider=>slider.addEventListener('input',()=>setSoundVolume(Number(slider.value)/100)));
 languageToggle.addEventListener('click',toggleLanguage);
 speedButtons.forEach(button=>button.addEventListener('click',()=>{
   const speed=Number(button.dataset.gameSpeed);

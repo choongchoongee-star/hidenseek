@@ -14,7 +14,11 @@
         <button id="mobile-pause" class="mobile-ui mobile-pause" aria-label="게임 일시정지"><span aria-hidden="true">Ⅱ</span><b data-ko="정지" data-en="PAUSE">정지</b></button>
         <div class="top-actions">
           <button id="language-toggle" class="language-toggle" aria-label="Switch to English">KR</button>
-          <button id="sound-toggle" class="sound-toggle" aria-pressed="true" aria-label="소리 끄기">소리 켜짐</button>
+          <div class="volume-control hud-volume-control">
+            <button id="sound-toggle" class="sound-toggle" aria-pressed="true" aria-label="소리 끄기">소리</button>
+            <input id="volume-slider" class="volume-slider" type="range" min="0" max="100" step="5" value="65" aria-label="음량" />
+            <output id="volume-value" for="volume-slider">65%</output>
+          </div>
           <div class="status"><span class="live-dot"></span><span id="timer">00:00</span></div>
         </div>
       </header>
@@ -89,7 +93,11 @@
         <p data-ko="참가자와 이벤트 시간이 멈췄습니다." data-en="The NPCs and event clock are frozen.">참가자와 이벤트 시간이 멈췄습니다.</p>
         <button id="resume-button" class="primary"><span data-ko="관찰 계속하기" data-en="RESUME OBSERVATION">관찰 계속하기</span> <b>→</b></button>
         <button id="view-controls-button" class="secondary" data-ko="조작법 보기" data-en="VIEW CONTROLS">조작법 보기</button>
-        <button id="pause-sound-toggle" class="pause-sound-toggle" aria-pressed="true">소리 켜짐</button>
+        <div class="volume-control pause-volume-control">
+          <button id="pause-sound-toggle" class="pause-sound-toggle" aria-pressed="true">소리 켜짐</button>
+          <input id="pause-volume-slider" class="volume-slider" type="range" min="0" max="100" step="5" value="65" aria-label="음량" />
+          <output id="pause-volume-value" for="pause-volume-slider">65%</output>
+        </div>
         <button id="end-observation-button" class="secondary danger-button" data-ko="관찰 종료 · 처음으로" data-en="END OBSERVATION · HOME">관찰 종료 · 처음으로</button>
         <small data-ko="계속하기 버튼 또는 ESC로 돌아갑니다" data-en="RESUME WITH THE BUTTON OR ESC">계속하기 버튼 또는 ESC로 돌아갑니다</small>
       </section>
