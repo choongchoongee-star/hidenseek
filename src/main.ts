@@ -272,7 +272,6 @@ const followButton = document.querySelector<HTMLButtonElement>('#mobile-follow')
 const controlsScreen = document.querySelector<HTMLElement>('#controls-screen')!;
 const controlsCloseButton = document.querySelector<HTMLButtonElement>('#controls-close-button')!;
 const participantButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-participant-count]')];
-const majorityCopy=document.querySelector<HTMLElement>('#majority-copy')!;
 const subjectCountSummary=document.querySelector<HTMLElement>('#subject-count-summary')!;
 const ruleNotes=document.querySelector<HTMLElement>('#rule-notes')!;
 const ruleNotesToggle=document.querySelector<HTMLButtonElement>('#rule-notes-toggle')!;
@@ -461,7 +460,6 @@ function cycleSubjectMark(subject:Subject) {
 
 function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
   participantCount=count;
-  majorityCopy.textContent=copy(`${count}명 중 단 한 명만 다르게 행동합니다.`,`Only one of ${count} people behaves differently.`);
   subjectCountSummary.textContent=copy(`참가자 ${count}명`,`${count} NPCS`);
   participantButtons.forEach(button=>{
     const active=Number(button.dataset.participantCount)===count;
