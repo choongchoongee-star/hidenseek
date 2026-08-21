@@ -251,6 +251,7 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .reveal span { display: block; margin-bottom: 7px; color: rgba(255,255,255,.46); font-size: 10px; }
 .reveal b { font-size: 20px; }
 .result-screen.fail .primary { background: var(--red); color: #fff; }
+.result-screen .secondary { width: min(360px,100%); margin-top: 8px; }
 .ranked-result-status { margin: -12px 0 22px !important; color: rgba(244,241,232,.68) !important; font-size: 11px !important; }
 .ranked-result-status.saved { color: #75e1bb !important; }
 .ranked-result-status.error { color: #ff9d8f !important; }

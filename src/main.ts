@@ -1265,6 +1265,7 @@ function returnToStartScreen(){
 
 document.querySelector('#play-button')!.addEventListener('click',requestStartRound);
 document.querySelector('#replay-button')!.addEventListener('click',requestStartRound);
+document.querySelector('#result-home-button')!.addEventListener('click',returnToStartScreen);
 participantButtons.forEach(button=>button.addEventListener('click',()=>{
   const count=Number(button.dataset.participantCount);
   if(count===6||count===9||count===12||count===24)setParticipantCount(count);
