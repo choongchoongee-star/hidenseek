@@ -1216,7 +1216,9 @@ async function startRound(){
 
 function updateResultCopy(){
   const success=roundResult==='success';
-  document.querySelector('#result-kicker')!.textContent=success?copy('이상 행동 확인','ANOMALY CONFIRMED'):copy('관찰 종료','OBSERVATION TERMINATED');
+  const resultKicker=document.querySelector<HTMLElement>('#result-kicker')!;
+  resultKicker.textContent=success?'':copy('관찰 종료','OBSERVATION TERMINATED');
+  resultKicker.hidden=success;
   document.querySelector('#result-title')!.textContent=success?copy('찾았습니다.','YOU FOUND IT.'):copy('추리에 실패했습니다.','CASE FAILED.');
   document.querySelector('#reveal-rule')!.textContent=targetRule.label[language];
   document.querySelector('#reveal-npc')!.textContent=subjects[oddId].name;
