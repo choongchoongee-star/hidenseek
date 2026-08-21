@@ -166,33 +166,42 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .screen h1 em { color: var(--yellow); font-style: normal; }
 .screen p { margin: 30px 0 28px; color: rgba(244,241,232,.66); font-size: 15px; line-height: 1.75; }
 .participant-selector { width: min(520px, calc(100vw - 56px)); margin: 0 0 24px; }
-.game-mode-panel { width: min(520px, calc(100vw - 56px)); margin: 0 0 18px; }
-.game-mode-panel > span { display: block; margin-bottom: 9px; color: rgba(244,241,232,.48); font-size: 11px; }
-.game-mode-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: rgba(244,241,232,.08); }
-.game-mode-selector button { min-height: 56px; padding: 8px 14px; border: 0; background: transparent; color: rgba(244,241,232,.58); text-align: left; cursor: pointer; transition: .18s; }
-.game-mode-selector button:hover { color: #fff; background: rgba(255,255,255,.06); }
-.game-mode-selector button.active { background: var(--yellow); color: #17150f; box-shadow: 0 7px 24px rgba(246,185,54,.16); }
+.game-mode-panel { width: min(520px, calc(100vw - 56px)); margin: 0 0 20px; }
+.game-mode-panel > span { display: block; margin-bottom: 10px; color: rgba(244,241,232,.48); font-size: 11px; }
+.game-mode-selector { display: grid; grid-template-columns: 1fr 1fr; border-block: 1px solid rgba(244,241,232,.14); }
+.game-mode-selector button { position: relative; min-height: 61px; padding: 9px 2px 11px; border: 0; background: transparent; color: rgba(244,241,232,.52); text-align: left; cursor: pointer; transition: color .18s; }
+.game-mode-selector button + button { padding-left: 18px; border-left: 1px solid rgba(244,241,232,.1); }
+.game-mode-selector button::after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: transparent; transition: background .18s; }
+.game-mode-selector button + button::after { left: 18px; }
+.game-mode-selector button:hover { color: #fff; }
+.game-mode-selector button.active { color: #f4f1e8; }
+.game-mode-selector button.active::after { background: var(--yellow); }
 .game-mode-selector button:disabled { cursor: wait; opacity: .7; }
 .game-mode-selector b, .game-mode-selector small { display: block; }
-.game-mode-selector b { font-size: 13px; }
+.game-mode-selector b { font-size: 14px; }
 .game-mode-selector small { margin-top: 3px; color: inherit; font-size: 10px; font-weight: 500; opacity: .75; }
 .account-status { min-height: 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 2px 0; color: rgba(244,241,232,.5); font-size: 10px; }
 .account-status[hidden] { display: none; }
 .account-status button { flex: none; padding: 3px 0; border: 0; border-bottom: 1px solid rgba(244,241,232,.35); background: transparent; color: rgba(244,241,232,.72); font-size: 10px; cursor: pointer; }
 .account-status button:hover { color: var(--yellow); border-color: var(--yellow); }
-.leaderboard-link { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; margin-top: 5px; padding: 0 12px; border: 0; border-left: 2px solid var(--yellow); background: rgba(244,241,232,.06); color: #f4f1e8; font: 700 11px var(--font-ui); cursor: pointer; }
-.leaderboard-link:hover { background: rgba(244,185,66,.12); color: var(--yellow); }
-.leaderboard-link b { font-size: 16px; }
+.leaderboard-link { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 2px; border: 0; border-bottom: 1px solid rgba(244,241,232,.14); background: transparent; color: rgba(244,241,232,.82); font: 700 11px var(--font-ui); cursor: pointer; transition: color .18s, border-color .18s; }
+.leaderboard-link:hover { border-color: rgba(246,185,54,.55); color: var(--yellow); }
+.leaderboard-link b { font-size: 15px; font-weight: 500; }
 .participant-selector > span { display: block; margin-bottom: 9px; color: rgba(244,241,232,.48); font-size: 11px; }
-.participant-selector > div { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; padding: 4px; background: rgba(244,241,232,.08); }
-.participant-selector button { min-height: 54px; border: 0; background: transparent; color: rgba(244,241,232,.58); font: 700 18px var(--font-ui); cursor: pointer; transition: .18s; }
+.participant-selector > div { display: grid; grid-template-columns: repeat(4,1fr); border-block: 1px solid rgba(244,241,232,.14); }
+.participant-selector button { position: relative; min-height: 59px; border: 0; background: transparent; color: rgba(244,241,232,.5); font: 700 18px var(--font-ui); cursor: pointer; transition: color .18s; }
+.participant-selector button + button { border-left: 1px solid rgba(244,241,232,.1); }
+.participant-selector button::after { content: ''; position: absolute; right: 18%; bottom: -1px; left: 18%; height: 2px; background: transparent; transition: background .18s; }
 .participant-selector button small { display: block; margin-top: 2px; color: inherit; font: 500 10px var(--font-ui); }
-.participant-selector button:hover { color: #fff; background: rgba(255,255,255,.06); }
-.participant-selector button.active { background: var(--yellow); color: #17150f; box-shadow: 0 7px 24px rgba(246,185,54,.16); }
+.participant-selector button:hover { color: #fff; }
+.participant-selector button.active { color: var(--yellow); }
+.participant-selector button.active::after { background: var(--yellow); }
 .rule-strip { display: none; }
 .primary { width: min(360px,100%); min-height: 58px; padding: 0 20px; border: 0; background: var(--yellow); color: #15140f; font-weight: 700; text-align: left; cursor: pointer; clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 0 100%); transition: background .18s, transform .18s; }
 .primary:hover { background: var(--yellow-soft); transform: translateY(-2px); }
 .primary b { float: right; font-size: 20px; }
+#start-screen .primary { padding-inline: 18px; border-radius: 2px; clip-path: none; box-shadow: 0 10px 28px rgba(0,0,0,.18); }
+#start-screen .primary b { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; margin-top: -3px; border: 1px solid rgba(21,20,15,.36); border-radius: 50%; font-size: 16px; font-weight: 500; }
 .screen > small, .controls-footnote { margin-top: 14px; color: rgba(244,241,232,.38); font-size: 10px; letter-spacing: .03em; }
 .secondary { width: min(320px,100%); min-height: 48px; border: 0; border-bottom: 1px solid rgba(255,255,255,.18); background: transparent; color: #f1efea; font-size: 12px; cursor: pointer; }
 .secondary:hover { color: var(--yellow); border-color: var(--yellow); }
@@ -394,7 +403,6 @@ kbd.wide-key { min-width: 80px; }
   .rules-dialog .primary { min-height: 52px; }
   .screen p { margin: 20px 0; font-size: 13px; line-height: 1.65; }
   .participant-selector { width: 100%; margin-bottom: 16px; }
-  .participant-selector > div { gap: 3px; }
   .participant-selector button { min-height: 50px; font-size: 17px; }
   .primary { width: 100%; min-height: 56px; }
   .screen > small { align-self: flex-start; line-height: 1.45; }
