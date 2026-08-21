@@ -1166,8 +1166,7 @@ function restoreSystemCursor() {
 
 function handleBrowserFocusLoss() {
   if(touchMode)return;
-  if(playing&&!paused)setPaused(true);
-  else restoreSystemCursor();
+  restoreSystemCursor();
 }
 
 function requestGamePointerLock() {
@@ -1316,7 +1315,9 @@ document.addEventListener('pointerlockchange',()=>{
     pointerLockAcquired=true;return;
   }
   const lostGamePointerLock=pointerLockAcquired;pointerLockAcquired=false;
-  if(playing&&!paused&&!altCursorMode&&lostGamePointerLock)setPaused(true);
+  if(playing&&!paused&&!altCursorMode&&lostGamePointerLock)setTimeout(()=>{
+    if(playing&&!paused&&!altCursorMode&&document.hasFocus()&&!document.hidden)setPaused(true);
+  },0);
 });
 document.addEventListener('pointerlockerror',()=>{pointerLockAcquired=false;setSystemCursorOverride(true)});
 addEventListener('blur',handleBrowserFocusLoss);
