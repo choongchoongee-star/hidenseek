@@ -259,10 +259,8 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 /* Clear leaderboard */
 .leaderboard-screen { z-index: 14; justify-content: flex-start; overflow-y: auto; padding: clamp(22px,5vh,54px) 24px; background: rgba(10,10,8,.97); }
 .leaderboard-dialog { width: min(720px,100%); margin: auto; text-align: left; }
-.leaderboard-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
-.leaderboard-heading .eyebrow { margin-bottom: 8px; }
+.leaderboard-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
 .leaderboard-heading h2 { margin: 0; font: 700 clamp(42px,7vw,72px)/.95 var(--font-ui); letter-spacing: -.055em; }
-.leaderboard-heading p { margin: 14px 0 24px; font-size: 12px; line-height: 1.6; }
 .leaderboard-heading > button { width: 44px; height: 44px; flex: none; border: 1px solid rgba(255,255,255,.2); background: transparent; color: #f4f1e8; font-size: 26px; cursor: pointer; }
 .leaderboard-heading > button:hover { border-color: var(--yellow); color: var(--yellow); }
 .leaderboard-tabs { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; padding: 4px; background: rgba(244,241,232,.08); }
@@ -413,8 +411,8 @@ kbd.wide-key { min-width: 80px; }
   .reveal div { padding: 16px 8px; }
   .reveal b { font-size: 16px; }
   .leaderboard-screen { padding: calc(20px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left)); }
+  .leaderboard-heading { margin-bottom: 18px; }
   .leaderboard-heading h2 { font-size: 42px; }
-  .leaderboard-heading p { margin: 12px 0 18px; }
   .leaderboard-tabs button { min-height: 48px; font-size: 15px; }
   .leaderboard-row { padding-inline: 8px; }
   .controls-screen { justify-content: flex-start; padding: calc(20px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left)); }
