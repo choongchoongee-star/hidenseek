@@ -74,6 +74,17 @@
         <div class="eyebrow" data-ko="관찰 추리 게임" data-en="AN OBSERVATION MYSTERY">관찰 추리 게임</div>
         <h1>FIND THE<br/><em>ODD ONE.</em></h1>
         <p><span data-ko="모두가 따르는 단 하나의 규칙을 찾으세요." data-en="Find the one rule everyone follows.">모두가 따르는 단 하나의 규칙을 찾으세요.</span><br/><span data-ko="그리고 그 규칙을 어기는 단 한 명을 지목하세요." data-en="Then accuse the one person who breaks it.">그리고 그 규칙을 어기는 단 한 명을 지목하세요.</span></p>
+        <div class="game-mode-panel">
+          <span data-ko="게임 모드" data-en="GAME MODE">게임 모드</span>
+          <div class="game-mode-selector" role="radiogroup" aria-label="Game mode">
+            <button class="active" data-game-mode="casual" role="radio" aria-checked="true"><b data-ko="일반 게임" data-en="CASUAL">일반 게임</b><small data-ko="로그인 없이 플레이" data-en="PLAY WITHOUT LOGIN">로그인 없이 플레이</small></button>
+            <button data-game-mode="ranked" role="radio" aria-checked="false"><b data-ko="랭크 게임" data-en="RANKED">랭크 게임</b><small data-ko="로그인 후 기록" data-en="LOGIN TO RECORD">로그인 후 기록</small></button>
+          </div>
+          <div id="account-status" class="account-status" aria-live="polite">
+            <span id="account-label" data-ko="랭크 게임은 Google 로그인이 필요합니다" data-en="RANKED PLAY REQUIRES GOOGLE LOGIN">랭크 게임은 Google 로그인이 필요합니다</span>
+            <button id="sign-out-button" hidden data-ko="로그아웃" data-en="SIGN OUT">로그아웃</button>
+          </div>
+        </div>
         <div class="participant-selector" role="radiogroup" aria-label="Number of participating subjects">
           <span data-ko="난이도 · 참가 인원" data-en="DIFFICULTY · PEOPLE">난이도 · 참가 인원</span>
           <div>

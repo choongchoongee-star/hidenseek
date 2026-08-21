@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import './style.css';
+import { prepareAuth, signInWithGoogle, signOutUser, watchAuth } from './firebase';
+import type { User } from 'firebase/auth';
 
 type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow' | 'greetingWave' | 'turnSpin';
 type SpatialRuleId = 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow';
@@ -10,6 +12,7 @@ type RuleNoteMark = '?' | '✓' | 'strike' | null;
 type ControlsOrigin = 'start' | 'pause';
 type Language = 'ko' | 'en';
 type GameSpeed = 1 | 1.5 | 2;
+type GameMode = 'casual' | 'ranked';
 
 interface LocalizedCopy { ko: string; en: string; }
 interface RuleDefinition { id: RuleId; action: ActionName; label: LocalizedCopy; note: LocalizedCopy; stimulus?: 'red'|'blue'|'yellow'|'hat'; }
@@ -307,6 +310,13 @@ const speedControls=document.querySelector<HTMLElement>('#speed-controls')!;
 const speedButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-game-speed]')];
 const volumeSliders=[...document.querySelectorAll<HTMLInputElement>('.volume-slider')];
 const volumeOutputs=[...document.querySelectorAll<HTMLOutputElement>('.volume-control output')];
+const gameModeButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-game-mode]')];
+const accountLabel=document.querySelector<HTMLElement>('#account-label')!;
+const signOutButton=document.querySelector<HTMLButtonElement>('#sign-out-button')!;
+let gameMode:GameMode='casual';
+let authUser:User|null=null;
+let authReady=false;
+let authBusy=false;
 
 function copy(ko:string,en:string){return language==='ko'?ko:en;}
 
@@ -337,6 +347,64 @@ function applyLanguage() {
   RULE_NOTE_ORDER.forEach(updateRuleNote);
   if(controlsScreen.classList.contains('open'))updateControlsCloseButton();
   if(roundResult)updateResultCopy();
+  updateGameModeUI();
+}
+
+function readLastGameMode():GameMode {
+  try { return localStorage.getItem('the-odd-one-last-mode')==='ranked'?'ranked':'casual'; }
+  catch { return 'casual'; }
+}
+
+function rememberGameMode() {
+  if(!authUser)return;
+  try { localStorage.setItem('the-odd-one-last-mode',gameMode); }
+  catch { /* Mode persistence is optional for the current session. */ }
+}
+
+function setGameMode(mode:GameMode) {
+  gameMode=mode;
+  updateGameModeUI();
+}
+
+function updateGameModeUI() {
+  gameModeButtons.forEach(button=>{
+    const selected=button.dataset.gameMode===gameMode;
+    button.classList.toggle('active',selected);
+    button.setAttribute('aria-checked',String(selected));
+    button.disabled=authBusy;
+  });
+  signOutButton.hidden=!authUser;
+  if(authBusy)accountLabel.textContent=copy('Google 로그인 창을 확인하세요','CHECK THE GOOGLE SIGN-IN WINDOW');
+  else if(authUser)accountLabel.textContent=copy(`${authUser.displayName||'플레이어'} · 로그인됨`,`${authUser.displayName||'PLAYER'} · SIGNED IN`);
+  else accountLabel.textContent=copy('랭크 게임은 Google 로그인이 필요합니다','RANKED PLAY REQUIRES GOOGLE LOGIN');
+}
+
+async function selectGameMode(mode:GameMode) {
+  if(mode==='casual'){setGameMode('casual');return;}
+  if(authUser){setGameMode('ranked');return;}
+  if(!authReady||authBusy)return;
+  authBusy=true;updateGameModeUI();
+  try {
+    authUser=await signInWithGoogle();
+    setGameMode('ranked');
+  } catch(error) {
+    console.warn('Google sign-in was not completed.',error);
+    setGameMode('casual');
+    showToast(copy('로그인을 완료해야 랭크 게임을 시작할 수 있어요','SIGN IN TO START A RANKED GAME'),true,2200);
+  } finally {authBusy=false;updateGameModeUI();}
+}
+
+async function initializeAuth() {
+  try {
+    await prepareAuth();
+    watchAuth(user=>{
+      authUser=user;authReady=true;
+      setGameMode(user?readLastGameMode():'casual');
+    });
+  } catch(error) {
+    console.warn('Firebase Auth could not be initialized.',error);
+    authReady=true;setGameMode('casual');
+  }
 }
 
 function setGameSpeed(speed:GameSpeed) {
@@ -1048,7 +1116,7 @@ function setAltCursorMode(value:boolean) {
   else if(playing&&!paused)requestGamePointerLock();
 }
 
-function startRound(){configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode)initializeMobileCamera();else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
+function startRound(){rememberGameMode();configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode)initializeMobileCamera();else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
 
 function updateResultCopy(){
   const success=roundResult==='success';
@@ -1107,6 +1175,8 @@ speedButtons.forEach(button=>button.addEventListener('click',()=>{
   const speed=Number(button.dataset.gameSpeed);
   if(speed===1||speed===1.5||speed===2)setGameSpeed(speed);
 }));
+gameModeButtons.forEach(button=>button.addEventListener('click',()=>selectGameMode(button.dataset.gameMode as GameMode)));
+signOutButton.addEventListener('click',async()=>{await signOutUser();setGameMode('casual');});
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
 addEventListener('keydown',e=>{if(rulesScreen.classList.contains('open')){if(e.code==='Escape')e.preventDefault();return}if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(!altCursorMode);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}const noteIndex=['Digit1','Digit2','Digit3','Digit4'].indexOf(e.code);if(noteIndex>=0&&noteIndex<activeRules.length&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault();adjustDesktopZoom(Math.sign(e.deltaY))}},{passive:false});
@@ -1126,6 +1196,7 @@ addEventListener('beforeunload',restoreSystemCursor);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode)camera.fov=innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 
 applyLanguage();
+void initializeAuth();
 const clock=new THREE.Clock(); let proximityTimer=0;
 function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const realDt=Math.min(clock.getDelta(),.05);if(playing&&!paused){const simulationDt=realDt*gameSpeed;roundTime+=simulationDt;bellTimer-=simulationDt;bell.scale.lerp(new THREE.Vector3(1,1,1),simulationDt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,simulationDt));proximityTimer-=simulationDt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode&&followedSubject)applyMobileCamera();else if(!touchMode)updateCamera(realDt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
 frame();
