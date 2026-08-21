@@ -78,12 +78,13 @@
           <span data-ko="게임 모드" data-en="GAME MODE">게임 모드</span>
           <div class="game-mode-selector" role="radiogroup" aria-label="Game mode">
             <button class="active" data-game-mode="casual" role="radio" aria-checked="true"><b data-ko="일반 게임" data-en="CASUAL">일반 게임</b><small data-ko="로그인 없이 플레이" data-en="PLAY WITHOUT LOGIN">로그인 없이 플레이</small></button>
-            <button data-game-mode="ranked" role="radio" aria-checked="false"><b data-ko="랭크 게임" data-en="RANKED">랭크 게임</b><small data-ko="로그인 후 기록" data-en="LOGIN TO RECORD">로그인 후 기록</small></button>
+            <button data-game-mode="ranked" role="radio" aria-checked="false"><b data-ko="랭크 게임" data-en="RANKED">랭크 게임</b><small data-ko="Google 이름으로 공개 기록" data-en="PUBLIC RECORD WITH GOOGLE NAME">Google 이름으로 공개 기록</small></button>
           </div>
           <div id="account-status" class="account-status" aria-live="polite">
             <span id="account-label" data-ko="랭크 게임은 Google 로그인이 필요합니다" data-en="RANKED PLAY REQUIRES GOOGLE LOGIN">랭크 게임은 Google 로그인이 필요합니다</span>
             <button id="sign-out-button" hidden data-ko="로그아웃" data-en="SIGN OUT">로그아웃</button>
           </div>
+          <button id="leaderboard-button" class="leaderboard-link"><span data-ko="클리어 랭킹" data-en="CLEAR LEADERBOARD">클리어 랭킹</span><b>↗</b></button>
         </div>
         <div class="participant-selector" role="radiogroup" aria-label="Number of participating subjects">
           <span data-ko="난이도 · 참가 인원" data-en="DIFFICULTY · PEOPLE">난이도 · 참가 인원</span>
@@ -97,6 +98,26 @@
         <div class="rule-strip"><span id="subject-count-summary">참가자 6명</span><span id="rule-count-summary">정답 후보 2개</span><span data-ko="기회 3번" data-en="3 CHANCES">기회 3번</span></div>
         <button id="play-button" class="primary"><span data-ko="게임 시작" data-en="START GAME">게임 시작</span> <b>→</b></button>
         <small id="device-note" data-ko="소리를 켜면 종 이벤트를 더 쉽게 알아챌 수 있어요" data-en="TURN UP THE SOUND TO CATCH THE BELL EVENT">소리를 켜면 종 이벤트를 더 쉽게 알아챌 수 있어요</small>
+      </section>
+      <section id="leaderboard-screen" class="screen leaderboard-screen" aria-hidden="true">
+        <div class="leaderboard-dialog">
+          <div class="leaderboard-heading">
+            <div>
+              <div class="eyebrow" data-ko="전체 기간 누적" data-en="ALL-TIME TOTAL">전체 기간 누적</div>
+              <h2 data-ko="클리어 랭킹" data-en="CLEAR LEADERBOARD">클리어 랭킹</h2>
+              <p data-ko="클리어 횟수로 순위를 정하고, 플레이 횟수는 참고로 표시합니다." data-en="Ranked by clears. Plays are shown for reference.">클리어 횟수로 순위를 정하고, 플레이 횟수는 참고로 표시합니다.</p>
+            </div>
+            <button id="leaderboard-close" aria-label="클리어 랭킹 닫기">×</button>
+          </div>
+          <div class="leaderboard-tabs" role="tablist" aria-label="Leaderboard difficulty">
+            <button class="active" data-leaderboard-difficulty="6" role="tab" aria-selected="true">6 <small data-ko="쉬움" data-en="EASY">쉬움</small></button>
+            <button data-leaderboard-difficulty="9" role="tab" aria-selected="false">9 <small data-ko="보통" data-en="MEDIUM">보통</small></button>
+            <button data-leaderboard-difficulty="12" role="tab" aria-selected="false">12 <small data-ko="어려움" data-en="HARD">어려움</small></button>
+            <button data-leaderboard-difficulty="24" role="tab" aria-selected="false">24 <small data-ko="극한" data-en="EXTREME">극한</small></button>
+          </div>
+          <div class="leaderboard-columns"><span data-ko="순위 · 플레이어" data-en="RANK · PLAYER">순위 · 플레이어</span><span data-ko="클리어 / 플레이" data-en="CLEARS / PLAYS">클리어 / 플레이</span></div>
+          <div id="leaderboard-list" class="leaderboard-list" aria-live="polite"></div>
+        </div>
       </section>
       <section id="rules-screen" class="screen rules-screen" aria-hidden="true">
         <div class="rules-dialog">
@@ -191,6 +212,7 @@
           <div><span data-ko="정답 규칙" data-en="TARGET RULE">정답 규칙</span><b id="reveal-rule"></b></div>
           <div><span data-ko="홀로 다른 참가자" data-en="ODD NPC">홀로 다른 참가자</span><b id="reveal-npc"></b></div>
         </div>
+        <p id="ranked-result-status" class="ranked-result-status" hidden></p>
         <button id="replay-button" class="primary"><span data-ko="다시 플레이" data-en="PLAY AGAIN">다시 플레이</span> <b>↻</b></button>
       </section>
     </div>

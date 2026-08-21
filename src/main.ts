@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import './style.css';
-import { prepareAuth, signInWithGoogle, signOutUser, watchAuth } from './firebase';
+import { finishRankedMatch, loadLeaderboard, prepareAuth, signInWithGoogle, signOutUser, startRankedMatch, watchAuth } from './firebase';
 import type { User } from 'firebase/auth';
+import type { LeaderboardEntry, RankedDifficulty, RankedResult } from './firebase';
 
 type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow' | 'greetingWave' | 'turnSpin';
 type SpatialRuleId = 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow';
@@ -313,10 +314,22 @@ const volumeOutputs=[...document.querySelectorAll<HTMLOutputElement>('.volume-co
 const gameModeButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-game-mode]')];
 const accountLabel=document.querySelector<HTMLElement>('#account-label')!;
 const signOutButton=document.querySelector<HTMLButtonElement>('#sign-out-button')!;
+const leaderboardScreen=document.querySelector<HTMLElement>('#leaderboard-screen')!;
+const leaderboardList=document.querySelector<HTMLElement>('#leaderboard-list')!;
+const leaderboardDifficultyButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-leaderboard-difficulty]')];
+const rankedResultStatus=document.querySelector<HTMLElement>('#ranked-result-status')!;
 let gameMode:GameMode='casual';
 let authUser:User|null=null;
 let authReady=false;
 let authBusy=false;
+let roundStarting=false;
+let activeRankedMatchId:string|null=null;
+let activeRankedUser:User|null=null;
+let leaderboardDifficulty:RankedDifficulty=6;
+let leaderboardEntries:LeaderboardEntry[]=[];
+let leaderboardLoading=false;
+let leaderboardFailed=false;
+let rankedSaveState:'saving'|'saved'|'error'|null=null;
 
 function copy(ko:string,en:string){return language==='ko'?ko:en;}
 
@@ -348,6 +361,7 @@ function applyLanguage() {
   if(controlsScreen.classList.contains('open'))updateControlsCloseButton();
   if(roundResult)updateResultCopy();
   updateGameModeUI();
+  if(leaderboardScreen.classList.contains('open'))renderLeaderboard();
 }
 
 function readLastGameMode():GameMode {
@@ -371,12 +385,68 @@ function updateGameModeUI() {
     const selected=button.dataset.gameMode===gameMode;
     button.classList.toggle('active',selected);
     button.setAttribute('aria-checked',String(selected));
-    button.disabled=authBusy;
+    button.disabled=authBusy||roundStarting;
   });
   signOutButton.hidden=!authUser;
   if(authBusy)accountLabel.textContent=copy('Google 로그인 창을 확인하세요','CHECK THE GOOGLE SIGN-IN WINDOW');
   else if(authUser)accountLabel.textContent=copy(`${authUser.displayName||'플레이어'} · 로그인됨`,`${authUser.displayName||'PLAYER'} · SIGNED IN`);
   else accountLabel.textContent=copy('랭크 게임은 Google 로그인이 필요합니다','RANKED PLAY REQUIRES GOOGLE LOGIN');
+  const playButton=document.querySelector<HTMLButtonElement>('#play-button')!;
+  playButton.disabled=roundStarting;
+  const playLabel=playButton.querySelector('span')!;
+  if(roundStarting)playLabel.textContent=copy('랭크 기록 생성 중','CREATING RANKED MATCH');
+  else playLabel.textContent=copy('게임 시작','START GAME');
+}
+
+function renderLeaderboard() {
+  leaderboardList.replaceChildren();
+  if(leaderboardLoading) {
+    const message=document.createElement('div');message.className='leaderboard-message';message.textContent=copy('랭킹을 불러오는 중입니다…','LOADING LEADERBOARD…');leaderboardList.append(message);return;
+  }
+  if(leaderboardFailed) {
+    const message=document.createElement('div');message.className='leaderboard-message';message.textContent=copy('랭킹을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.','COULD NOT LOAD THE LEADERBOARD. TRY AGAIN SOON.');leaderboardList.append(message);return;
+  }
+  if(!leaderboardEntries.length) {
+    const message=document.createElement('div');message.className='leaderboard-message';message.textContent=copy('아직 기록이 없습니다. 첫 클리어를 남겨보세요.','NO RECORDS YET. CLAIM THE FIRST CLEAR.');leaderboardList.append(message);return;
+  }
+  let displayedRank=0;
+  leaderboardEntries.forEach((entry,index)=>{
+    if(index===0||entry.clears!==leaderboardEntries[index-1].clears)displayedRank=index+1;
+    const row=document.createElement('div');row.className='leaderboard-row';
+    const player=document.createElement('div');player.className='leaderboard-player';
+    const rank=document.createElement('span');rank.className='leaderboard-rank';rank.textContent=copy(`${displayedRank}위`,`#${displayedRank}`);
+    const name=document.createElement('span');name.className='leaderboard-name';name.textContent=entry.displayName;
+    const score=document.createElement('div');score.className='leaderboard-score';
+    const clears=document.createElement('b');clears.textContent=copy(`${entry.clears} 클리어`,`${entry.clears} CLEARS`);
+    const plays=document.createElement('span');plays.textContent=copy(`${entry.plays} 플레이`,`${entry.plays} PLAYS`);
+    player.append(rank,name);score.append(clears,plays);row.append(player,score);leaderboardList.append(row);
+  });
+}
+
+async function refreshLeaderboard() {
+  leaderboardLoading=true;leaderboardFailed=false;renderLeaderboard();
+  try { leaderboardEntries=await loadLeaderboard(leaderboardDifficulty); }
+  catch(error) { console.warn('Leaderboard could not be loaded.',error);leaderboardEntries=[];leaderboardFailed=true; }
+  finally { leaderboardLoading=false;renderLeaderboard(); }
+}
+
+function openLeaderboard() {
+  leaderboardScreen.classList.add('open');leaderboardScreen.setAttribute('aria-hidden','false');
+  void refreshLeaderboard();
+}
+
+function closeLeaderboard() {
+  leaderboardScreen.classList.remove('open');leaderboardScreen.setAttribute('aria-hidden','true');
+  document.querySelector<HTMLButtonElement>('#leaderboard-button')!.focus();
+}
+
+function setLeaderboardDifficulty(difficulty:RankedDifficulty) {
+  leaderboardDifficulty=difficulty;
+  leaderboardDifficultyButtons.forEach(button=>{
+    const selected=Number(button.dataset.leaderboardDifficulty)===difficulty;
+    button.classList.toggle('active',selected);button.setAttribute('aria-selected',String(selected));
+  });
+  void refreshLeaderboard();
 }
 
 async function selectGameMode(mode:GameMode) {
@@ -1116,7 +1186,24 @@ function setAltCursorMode(value:boolean) {
   else if(playing&&!paused)requestGamePointerLock();
 }
 
-function startRound(){rememberGameMode();configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode)initializeMobileCamera();else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}}
+async function startRound(){
+  if(roundStarting)return;
+  roundStarting=true;updateGameModeUI();
+  try {
+    activeRankedMatchId=null;activeRankedUser=null;rankedSaveState=null;
+    if(gameMode==='ranked') {
+      if(!authUser)throw new Error('ranked-auth-required');
+      const rankedUser=authUser;
+      activeRankedMatchId=await startRankedMatch(rankedUser,participantCount);
+      activeRankedUser=rankedUser;
+    }
+    rememberGameMode();configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode)initializeMobileCamera();else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}
+  } catch(error) {
+    console.warn('Ranked match could not be started.',error);
+    activeRankedMatchId=null;activeRankedUser=null;
+    showToast(copy('랭크 기록을 만들지 못해 게임을 시작하지 않았습니다','RANKED RECORD FAILED, SO THE GAME DID NOT START'),true,3000);
+  } finally { roundStarting=false;updateGameModeUI(); }
+}
 
 function updateResultCopy(){
   const success=roundResult==='success';
@@ -1124,11 +1211,36 @@ function updateResultCopy(){
   document.querySelector('#result-title')!.textContent=success?copy('찾았습니다.','YOU FOUND IT.'):copy('추리에 실패했습니다.','CASE FAILED.');
   document.querySelector('#reveal-rule')!.textContent=targetRule.label[language];
   document.querySelector('#reveal-npc')!.textContent=subjects[oddId].name;
+  updateRankedResultStatus();
 }
 
-function endRound(success:boolean){playing=false;paused=false;roundResult=success?'success':'fail';restoreSystemCursor();setFollowSubject(null,false);document.body.classList.remove('round-active','paused','cursor-free');setRuleNotesOpen(false);document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;updateResultCopy()}
+function updateRankedResultStatus() {
+  rankedResultStatus.hidden=!rankedSaveState;
+  rankedResultStatus.className=`ranked-result-status${rankedSaveState?` ${rankedSaveState}`:''}`;
+  if(rankedSaveState==='saving')rankedResultStatus.textContent=copy('랭크 결과 저장 중…','SAVING RANKED RESULT…');
+  else if(rankedSaveState==='saved')rankedResultStatus.textContent=copy('랭크 결과가 저장되었습니다.','RANKED RESULT SAVED.');
+  else if(rankedSaveState==='error')rankedResultStatus.textContent=copy('결과 저장에 실패했습니다. 네트워크를 확인해 주세요.','RESULT SAVE FAILED. CHECK YOUR CONNECTION.');
+  else rankedResultStatus.textContent='';
+}
+
+async function finishActiveRankedRound(result:RankedResult) {
+  const matchId=activeRankedMatchId;const user=activeRankedUser;
+  if(!matchId||!user)return;
+  activeRankedMatchId=null;activeRankedUser=null;
+  if(result!=='abandoned'){rankedSaveState='saving';updateRankedResultStatus();}
+  try {
+    await finishRankedMatch(user,matchId,result);
+    if(result!=='abandoned'){rankedSaveState='saved';updateRankedResultStatus();}
+  } catch(error) {
+    console.warn('Ranked result could not be saved.',error);
+    if(result!=='abandoned'){rankedSaveState='error';updateRankedResultStatus();}
+  }
+}
+
+function endRound(success:boolean){playing=false;paused=false;roundResult=success?'success':'fail';restoreSystemCursor();setFollowSubject(null,false);document.body.classList.remove('round-active','paused','cursor-free');setRuleNotesOpen(false);document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;if(activeRankedMatchId){rankedSaveState='saving';void finishActiveRankedRound(success?'success':'fail')}updateResultCopy()}
 
 function returnToStartScreen(){
+  if(activeRankedMatchId)void finishActiveRankedRound('abandoned');
   playing=false;paused=false;roundResult=null;restoreSystemCursor();cancelTouchPointers();setFollowSubject(null,false);selectSubject(null);
   subjects.forEach(subject=>subject.marker.material.opacity=0);
   document.querySelector('#crosshair')!.classList.remove('locked');const targetLabel=document.querySelector<HTMLElement>('#target-label')!;targetLabel.textContent='';targetLabel.classList.remove('show');
@@ -1177,8 +1289,14 @@ speedButtons.forEach(button=>button.addEventListener('click',()=>{
 }));
 gameModeButtons.forEach(button=>button.addEventListener('click',()=>selectGameMode(button.dataset.gameMode as GameMode)));
 signOutButton.addEventListener('click',async()=>{await signOutUser();setGameMode('casual');});
+document.querySelector('#leaderboard-button')!.addEventListener('click',openLeaderboard);
+document.querySelector('#leaderboard-close')!.addEventListener('click',closeLeaderboard);
+leaderboardDifficultyButtons.forEach(button=>button.addEventListener('click',()=>{
+  const difficulty=Number(button.dataset.leaderboardDifficulty);
+  if(difficulty===6||difficulty===9||difficulty===12||difficulty===24)setLeaderboardDifficulty(difficulty);
+}));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
-addEventListener('keydown',e=>{if(rulesScreen.classList.contains('open')){if(e.code==='Escape')e.preventDefault();return}if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(!altCursorMode);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}const noteIndex=['Digit1','Digit2','Digit3','Digit4'].indexOf(e.code);if(noteIndex>=0&&noteIndex<activeRules.length&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('keydown',e=>{if(leaderboardScreen.classList.contains('open')){if(e.code==='Escape'){e.preventDefault();closeLeaderboard()}return}if(rulesScreen.classList.contains('open')){if(e.code==='Escape')e.preventDefault();return}if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(!altCursorMode);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}const noteIndex=['Digit1','Digit2','Digit3','Digit4'].indexOf(e.code);if(noteIndex>=0&&noteIndex<activeRules.length&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault();adjustDesktopZoom(Math.sign(e.deltaY))}},{passive:false});
 document.addEventListener('pointerlockchange',()=>{
   if(document.pointerLockElement===canvas) {

@@ -180,6 +180,9 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .account-status { min-height: 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 2px 0; color: rgba(244,241,232,.5); font-size: 10px; }
 .account-status button { flex: none; padding: 3px 0; border: 0; border-bottom: 1px solid rgba(244,241,232,.35); background: transparent; color: rgba(244,241,232,.72); font-size: 10px; cursor: pointer; }
 .account-status button:hover { color: var(--yellow); border-color: var(--yellow); }
+.leaderboard-link { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; margin-top: 5px; padding: 0 12px; border: 0; border-left: 2px solid var(--yellow); background: rgba(244,241,232,.06); color: #f4f1e8; font: 700 11px var(--font-ui); cursor: pointer; }
+.leaderboard-link:hover { background: rgba(244,185,66,.12); color: var(--yellow); }
+.leaderboard-link b { font-size: 16px; }
 .participant-selector > span { display: block; margin-bottom: 9px; color: rgba(244,241,232,.48); font-size: 11px; }
 .participant-selector > div { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; padding: 4px; background: rgba(244,241,232,.08); }
 .participant-selector button { min-height: 54px; border: 0; background: transparent; color: rgba(244,241,232,.58); font: 700 18px var(--font-ui); cursor: pointer; transition: .18s; }
@@ -227,6 +230,35 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .reveal span { display: block; margin-bottom: 7px; color: rgba(255,255,255,.46); font-size: 10px; }
 .reveal b { font-size: 20px; }
 .result-screen.fail .primary { background: var(--red); color: #fff; }
+.ranked-result-status { margin: -12px 0 22px !important; color: rgba(244,241,232,.68) !important; font-size: 11px !important; }
+.ranked-result-status.saved { color: #75e1bb !important; }
+.ranked-result-status.error { color: #ff9d8f !important; }
+
+/* Clear leaderboard */
+.leaderboard-screen { z-index: 14; justify-content: flex-start; overflow-y: auto; padding: clamp(22px,5vh,54px) 24px; background: rgba(10,10,8,.97); }
+.leaderboard-dialog { width: min(720px,100%); margin: auto; text-align: left; }
+.leaderboard-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.leaderboard-heading .eyebrow { margin-bottom: 8px; }
+.leaderboard-heading h2 { margin: 0; font: 700 clamp(42px,7vw,72px)/.95 var(--font-ui); letter-spacing: -.055em; }
+.leaderboard-heading p { margin: 14px 0 24px; font-size: 12px; line-height: 1.6; }
+.leaderboard-heading > button { width: 44px; height: 44px; flex: none; border: 1px solid rgba(255,255,255,.2); background: transparent; color: #f4f1e8; font-size: 26px; cursor: pointer; }
+.leaderboard-heading > button:hover { border-color: var(--yellow); color: var(--yellow); }
+.leaderboard-tabs { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; padding: 4px; background: rgba(244,241,232,.08); }
+.leaderboard-tabs button { min-height: 52px; border: 0; background: transparent; color: rgba(244,241,232,.58); font: 700 16px var(--font-ui); cursor: pointer; }
+.leaderboard-tabs button small { display: block; margin-top: 2px; color: inherit; font: 500 10px var(--font-ui); }
+.leaderboard-tabs button.active { background: var(--yellow); color: #17150f; }
+.leaderboard-columns, .leaderboard-row { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 18px; }
+.leaderboard-columns { padding: 16px 14px 8px; color: rgba(244,241,232,.42); font-size: 10px; }
+.leaderboard-columns span:last-child { text-align: right; }
+.leaderboard-list { min-height: 250px; border-top: 1px solid rgba(255,255,255,.16); }
+.leaderboard-row { min-height: 54px; padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.leaderboard-player { min-width: 0; display: flex; align-items: center; gap: 12px; }
+.leaderboard-rank { width: 36px; flex: none; color: var(--yellow); font-size: 12px; font-weight: 700; }
+.leaderboard-name { overflow: hidden; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.leaderboard-score { text-align: right; white-space: nowrap; }
+.leaderboard-score b { color: var(--yellow); font-size: 15px; }
+.leaderboard-score span { margin-left: 8px; color: rgba(244,241,232,.52); font-size: 10px; }
+.leaderboard-message { display: grid; min-height: 250px; place-items: center; padding: 30px; color: rgba(244,241,232,.52); font-size: 12px; text-align: center; }
 
 /* Controls handbook */
 .controls-screen { z-index: 12; justify-content: flex-start; overflow-y: auto; padding: clamp(14px,2.5vh,24px) 24px; background: rgba(10,10,8,.98); }
@@ -317,6 +349,7 @@ kbd.wide-key { min-width: 80px; }
   #start-screen { justify-content: flex-end; align-items: stretch; padding-top: calc(58px + env(safe-area-inset-top)); text-align: left; background: linear-gradient(0deg, rgba(10,11,9,.99) 0 46%, rgba(10,11,9,.72) 72%, rgba(10,11,9,.18) 100%); }
   #start-screen .eyebrow { margin-bottom: 12px; }
   .screen h1 { font-size: clamp(50px,15vw,68px); }
+  .game-mode-panel { width: 100%; margin-bottom: 14px; }
   .rules-screen { padding: calc(18px + env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left)); }
   .rules-dialog h2 { font-size: 38px; }
   .rules-lead { margin: 12px 0 14px !important; }
@@ -333,6 +366,11 @@ kbd.wide-key { min-width: 80px; }
   .reveal { width: 100%; margin: 24px 0; }
   .reveal div { padding: 16px 8px; }
   .reveal b { font-size: 16px; }
+  .leaderboard-screen { padding: calc(20px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left)); }
+  .leaderboard-heading h2 { font-size: 42px; }
+  .leaderboard-heading p { margin: 12px 0 18px; }
+  .leaderboard-tabs button { min-height: 48px; font-size: 15px; }
+  .leaderboard-row { padding-inline: 8px; }
   .controls-screen { justify-content: flex-start; padding: calc(20px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left)); }
   .controls-heading h2 { font-size: 34px; }
   .controls-heading p { margin: 7px 0 18px; font-size: 12px; }
