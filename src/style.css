@@ -217,10 +217,10 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .rules-example b, .rules-example strong { font-size: 13px; }
 .rules-example i { color: var(--yellow); font-size: 17px; font-style: normal; }
 .rules-steps { margin: 0; padding: 0; list-style: none; border-top: 1px solid rgba(255,255,255,.17); }
-.rules-steps li { min-height: 72px; display: grid; grid-template-columns: 50px 1fr; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.13); }
-.rules-steps li > b { color: var(--yellow); font-size: 16px; }
+.rules-steps li { min-height: 72px; display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.13); }
 .rules-steps strong, .rules-steps small { display: block; }
 .rules-steps strong { margin-bottom: 4px; font-size: 13px; text-wrap: balance; word-break: keep-all; }
+.rules-steps li:first-child strong { color: var(--yellow); }
 .rules-steps small { color: rgba(244,241,232,.58); font-size: 11px; line-height: 1.5; text-wrap: pretty; word-break: keep-all; overflow-wrap: break-word; }
 .rules-bell { display: grid; grid-template-columns: 50px 1fr; align-items: center; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.13); }
 .rules-bell > b { color: var(--yellow); font-size: 18px; }
@@ -390,8 +390,7 @@ kbd.wide-key { min-width: 80px; }
   .rules-example { padding: 9px 11px; }
   .rules-example > div { gap: 8px; }
   .rules-example b, .rules-example strong { font-size: 12px; }
-  .rules-steps li { min-height: 62px; grid-template-columns: 38px 1fr; padding: 7px 0; }
-  .rules-steps li > b { font-size: 13px; }
+  .rules-steps li { min-height: 62px; padding: 7px 0; }
   .rules-steps strong { font-size: 12px; }
   .rules-steps small { font-size: 10px; line-height: 1.42; }
   .rules-bell { grid-template-columns: 38px 1fr; padding: 8px 0; }
