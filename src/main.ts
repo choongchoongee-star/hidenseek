@@ -67,6 +67,8 @@ const RULES: RuleDefinition[] = [
   { id:'turnSpin', action:'spin', label:{ko:'방향 전환 회전',en:'TURN SPIN'}, note:{ko:'이동 목표 도착 → 회전',en:'Reach a waypoint → SPIN'} },
 ];
 const PARTICIPANT_OPTIONS = [6,9,12,24] as const;
+const INITIAL_BELL_INTERVAL = [10.5,15] as const;
+const BELL_INTERVAL = [15,21] as const;
 const SPATIAL_RULE_IDS:SpatialRuleId[]=['centerSit','edgeJump','bellZoneKick','lampBow'];
 const SUBJECT_NAMES = ['영수','영호','영식','영철','광수','상철','민수','준호','태수','성훈','진우','동진','영숙','정숙','순자','영자','옥순','현숙','지영','수진','민지','혜진','은영','보람'];
 const ARENA_SIZES:Record<typeof PARTICIPANT_OPTIONS[number],number>={6:30,9:38,12:44,24:58};
@@ -262,7 +264,7 @@ let controlsOrigin: ControlsOrigin = 'start';
 let controlsAcknowledged = readControlsAcknowledged();
 let rulesDismissed = readRulesDismissed();
 let roundTime = 0;
-let bellTimer = 8;
+let bellTimer:number = INITIAL_BELL_INTERVAL[0];
 let gameSpeed:GameSpeed = 1;
 let yaw = 0;
 let pitch = -.28;
@@ -834,7 +836,7 @@ function configureRound() {
   });
   activeSubjects.forEach((subject,index)=>subject.root.position.set((index%columns-(columns-1)/2)*6.5,0,(Math.floor(index/columns)-(rows-1)/2)*7));
   validateRoundConfiguration();
-  attempts=3;roundTime=0;bellTimer=THREE.MathUtils.randFloat(7,10);renderRuleNotes();updateAttempts();resetRuleNotes();
+  attempts=3;roundTime=0;bellTimer=THREE.MathUtils.randFloat(INITIAL_BELL_INTERVAL[0],INITIAL_BELL_INTERVAL[1]);renderRuleNotes();updateAttempts();resetRuleNotes();
 }
 
 function validateRoundConfiguration() {
@@ -866,7 +868,7 @@ function trigger(subject:Subject, ruleId:RuleId) {
 }
 
 function ringBell() {
-  bellTimer=THREE.MathUtils.randFloat(10,14);
+  bellTimer=THREE.MathUtils.randFloat(BELL_INTERVAL[0],BELL_INTERVAL[1]);
   activeSubjects.forEach(subject=>{
     if(!subject.bellObeys)return;
     resetActionPose(subject);
