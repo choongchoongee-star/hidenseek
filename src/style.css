@@ -323,10 +323,10 @@ kbd.wide-key { min-width: 80px; }
 .touch-mode #game { touch-action: none; }
 .touch-mode .crosshair, .touch-mode .target-label, .touch-mode .controls { display: none; }
 .touch-mode .top-hud { padding: calc(10px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 14px max(12px,env(safe-area-inset-left)); align-items: flex-start; justify-content: space-between; background: linear-gradient(180deg,rgba(7,8,7,.68),rgba(7,8,7,.18) 68%,transparent); }
-.touch-mode .mobile-pause { width: 46px; height: 46px; min-height: 46px; justify-content: center; padding: 0; border: 1px solid rgba(255,255,255,.1); border-radius: 15px; background: rgba(15,16,14,.8); box-shadow: 0 7px 22px rgba(0,0,0,.22); }
+.touch-mode .mobile-pause { order: 2; width: 46px; height: 46px; min-height: 46px; margin-left: auto; justify-content: center; padding: 0; border: 1px solid rgba(255,255,255,.1); border-radius: 15px; background: rgba(15,16,14,.8); box-shadow: 0 7px 22px rgba(0,0,0,.22); }
 .touch-mode .mobile-pause span { font-size: 17px; }
 .touch-mode .mobile-pause b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.touch-mode .top-actions { gap: 6px; }
+.touch-mode .top-actions { order: 1; gap: 6px; }
 .touch-mode .language-toggle { width: 44px; min-width: 44px; height: 46px; padding: 0; border: 1px solid rgba(255,255,255,.08); border-radius: 15px; background: rgba(15,16,14,.74); }
 .touch-mode .hud-volume-control { height: 46px; min-height: 46px; padding-right: 8px; border: 1px solid rgba(255,255,255,.08); border-radius: 15px; background: rgba(15,16,14,.74); overflow: hidden; }
 .touch-mode .hud-volume-control .sound-toggle { width: 42px; min-width: 42px; height: 44px; padding: 0; font-size: 0; }
