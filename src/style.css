@@ -200,26 +200,27 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .rules-screen { z-index: 13; justify-content: flex-start; overflow-y: auto; padding: 24px; background: rgba(10,10,8,.96); }
 .rules-dialog { width: min(680px,100%); margin: auto; text-align: left; }
 .rules-dialog .eyebrow { margin-bottom: 10px; }
-.rules-dialog h2 { margin: 0; font: 700 clamp(38px,6vw,64px)/1 var(--font-ui); letter-spacing: -.055em; }
-.rules-lead { margin: 14px 0 16px !important; font-size: 13px !important; line-height: 1.65 !important; }
+.rules-dialog h2 { margin: 0; font: 700 clamp(38px,6vw,64px)/1 var(--font-ui); letter-spacing: -.055em; text-wrap: balance; word-break: keep-all; overflow-wrap: break-word; }
+.rules-lead { margin: 14px 0 16px !important; font-size: 13px !important; line-height: 1.65 !important; text-wrap: pretty; word-break: keep-all; overflow-wrap: break-word; }
 .rules-example { padding: 12px 14px; border-left: 3px solid var(--yellow); background: rgba(244,185,66,.08); }
 .rules-example > span { display: block; margin-bottom: 7px; color: var(--yellow); font-size: 10px; font-weight: 700; }
 .rules-example > div { display: flex; align-items: center; gap: 12px; }
 .rules-example b, .rules-example strong { font-size: 13px; }
 .rules-example i { color: var(--yellow); font-size: 17px; font-style: normal; }
-.rules-example small { display: block; margin-top: 6px; color: rgba(244,241,232,.6); font-size: 10px; line-height: 1.45; }
 .rules-steps { margin: 0; padding: 0; list-style: none; border-top: 1px solid rgba(255,255,255,.17); }
 .rules-steps li { min-height: 72px; display: grid; grid-template-columns: 50px 1fr; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.13); }
 .rules-steps li > b { color: var(--yellow); font-size: 16px; }
 .rules-steps strong, .rules-steps small { display: block; }
-.rules-steps strong { margin-bottom: 4px; font-size: 13px; }
-.rules-steps small { color: rgba(244,241,232,.58); font-size: 11px; line-height: 1.5; }
+.rules-steps strong { margin-bottom: 4px; font-size: 13px; text-wrap: balance; word-break: keep-all; }
+.rules-steps small { color: rgba(244,241,232,.58); font-size: 11px; line-height: 1.5; text-wrap: pretty; word-break: keep-all; overflow-wrap: break-word; }
 .rules-bell { display: grid; grid-template-columns: 50px 1fr; align-items: center; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.13); }
 .rules-bell > b { color: var(--yellow); font-size: 18px; }
 .rules-bell strong, .rules-bell small { display: block; }
-.rules-bell strong { margin-bottom: 4px; color: #ffb3a7; font-size: 13px; }
-.rules-bell small { color: rgba(244,241,232,.58); font-size: 11px; line-height: 1.5; }
+.rules-bell strong { margin-bottom: 4px; color: #ffb3a7; font-size: 13px; text-wrap: balance; word-break: keep-all; }
+.rules-bell small { color: rgba(244,241,232,.58); font-size: 11px; line-height: 1.5; text-wrap: pretty; word-break: keep-all; overflow-wrap: break-word; }
 .rules-goal { margin: 13px 0 8px !important; color: #f4f1e8 !important; font-size: 12px !important; font-weight: 700; line-height: 1.6 !important; }
+.rules-goal span, .rules-goal strong { display: block; text-wrap: pretty; word-break: keep-all; overflow-wrap: break-word; }
+.rules-goal strong { margin-top: 2px; color: var(--yellow); }
 .dont-show-rules { min-height: 44px; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; color: rgba(244,241,232,.68); font-size: 11px; cursor: pointer; }
 .dont-show-rules input { width: 20px; height: 20px; margin: 0; accent-color: var(--yellow); }
 .rules-dialog .primary { width: 100%; }
