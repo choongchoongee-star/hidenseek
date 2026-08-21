@@ -243,7 +243,8 @@ let participantCount:typeof PARTICIPANT_OPTIONS[number]=6;
 let activeSubjects:Subject[]=[];
 let activeSubjectIds=new Set<number>();
 let oddId = 0;
-let attempts = 3;
+let attemptLimit = 2;
+let attempts = attemptLimit;
 let playing = false;
 let paused = false;
 let soundVolume=readSoundVolume();
@@ -302,6 +303,8 @@ const rulesMajorityExample = document.querySelector<HTMLElement>('#rules-majorit
 const participantButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-participant-count]')];
 const subjectCountSummary=document.querySelector<HTMLElement>('#subject-count-summary')!;
 const ruleCountSummary=document.querySelector<HTMLElement>('#rule-count-summary')!;
+const attemptCountSummary=document.querySelector<HTMLElement>('#attempt-count-summary')!;
+const rulesChances=document.querySelector<HTMLElement>('#rules-chances')!;
 const ruleCountBadge=document.querySelector<HTMLElement>('#rule-count-badge')!;
 const desktopNoteHelp=document.querySelector<HTMLElement>('#desktop-note-help')!;
 const ruleNotes=document.querySelector<HTMLElement>('#rule-notes')!;
@@ -666,8 +669,12 @@ function cycleSubjectMark(subject:Subject) {
 function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
   participantCount=count;
   const ruleCount=ruleCountForParticipants();
+  attemptLimit=attemptLimitForParticipants(count);
+  if(!playing)attempts=attemptLimit;
   subjectCountSummary.textContent=copy(`참가자 ${count}명`,`${count} NPCS`);
   ruleCountSummary.textContent=copy(`정답 후보 ${ruleCount}개`,`${ruleCount} TARGET RULES`);
+  attemptCountSummary.textContent=copy(`기회 ${attemptLimit}번`,`${attemptLimit} CHANCES`);
+  rulesChances.textContent=copy(`기회는 ${attemptLimit}번입니다.`,`YOU HAVE ${attemptLimit} CHANCES.`);
   ruleCountBadge.textContent=String(ruleCount);
   rulesMajorityExample.textContent=copy(
     `${count}명 중 ${count-1}명은 지키고, 한 명만 어깁니다.`,
@@ -677,6 +684,7 @@ function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
     const active=Number(button.dataset.participantCount)===count;
     button.classList.toggle('active',active);button.setAttribute('aria-checked',String(active));
   });
+  updateAttempts();
 }
 
 function setRuleNotesOpen(value:boolean) {
@@ -800,6 +808,10 @@ function ruleCountForParticipants() {
   return participantCount===6?2:participantCount===9?3:4;
 }
 
+function attemptLimitForParticipants(count:typeof PARTICIPANT_OPTIONS[number]=participantCount) {
+  return count===24?3:2;
+}
+
 function chooseActiveRules() {
   const rulesByAction=new Map<ActionName,RuleDefinition[]>();
   for(const rule of RULES)rulesByAction.set(rule.action,[...(rulesByAction.get(rule.action)??[]),rule]);
@@ -836,7 +848,7 @@ function configureRound() {
   });
   activeSubjects.forEach((subject,index)=>subject.root.position.set((index%columns-(columns-1)/2)*6.5,0,(Math.floor(index/columns)-(rows-1)/2)*7));
   validateRoundConfiguration();
-  attempts=3;roundTime=0;bellTimer=THREE.MathUtils.randFloat(INITIAL_BELL_INTERVAL[0],INITIAL_BELL_INTERVAL[1]);renderRuleNotes();updateAttempts();resetRuleNotes();
+  attemptLimit=attemptLimitForParticipants();attempts=attemptLimit;roundTime=0;bellTimer=THREE.MathUtils.randFloat(INITIAL_BELL_INTERVAL[0],INITIAL_BELL_INTERVAL[1]);renderRuleNotes();updateAttempts();resetRuleNotes();
 }
 
 function validateRoundConfiguration() {
@@ -1091,7 +1103,7 @@ function accuse(subject=hovered) {
   if(attempts<=0) endRound(false);
 }
 
-function updateAttempts(){const el=document.querySelector('#attempts')!;el.innerHTML='';for(let i=0;i<3;i++){const bar=document.createElement('i');bar.className=`attempt${i>=attempts?' lost':''}`;el.appendChild(bar)}el.setAttribute('aria-label',copy(`고발 기회 ${attempts}번 남음`,`${attempts} attempts remaining`))}
+function updateAttempts(){const el=document.querySelector('#attempts')!;el.innerHTML='';for(let i=0;i<attemptLimit;i++){const bar=document.createElement('i');bar.className=`attempt${i>=attempts?' lost':''}`;el.appendChild(bar)}el.setAttribute('aria-label',copy(`고발 기회 ${attempts}번 남음`,`${attempts} attempts remaining`))}
 let toastTimeout=0;
 function showToast(message:string,bad=false,duration=1200){const el=document.querySelector('#toast')!;el.textContent=message;el.className=`toast show${bad?' bad':''}`;clearTimeout(toastTimeout);toastTimeout=window.setTimeout(()=>el.className='toast',duration)}
 

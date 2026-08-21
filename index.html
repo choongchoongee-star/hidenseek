@@ -88,13 +88,13 @@
         <div class="participant-selector" role="radiogroup" aria-label="Number of participating subjects">
           <span data-ko="난이도 · 참가 인원" data-en="DIFFICULTY · PEOPLE">난이도 · 참가 인원</span>
           <div>
-            <button class="active" data-participant-count="6" role="radio" aria-checked="true">6 <small data-ko="쉬움" data-en="EASY">쉬움</small></button>
-            <button data-participant-count="9" role="radio" aria-checked="false">9 <small data-ko="보통" data-en="MEDIUM">보통</small></button>
-            <button data-participant-count="12" role="radio" aria-checked="false">12 <small data-ko="어려움" data-en="HARD">어려움</small></button>
-            <button data-participant-count="24" role="radio" aria-checked="false">24 <small data-ko="극한" data-en="EXTREME">극한</small></button>
+            <button class="active" data-participant-count="6" role="radio" aria-checked="true">6 <small data-ko="쉬움 · 2회" data-en="EASY · 2 TRIES">쉬움 · 2회</small></button>
+            <button data-participant-count="9" role="radio" aria-checked="false">9 <small data-ko="보통 · 2회" data-en="MEDIUM · 2 TRIES">보통 · 2회</small></button>
+            <button data-participant-count="12" role="radio" aria-checked="false">12 <small data-ko="어려움 · 2회" data-en="HARD · 2 TRIES">어려움 · 2회</small></button>
+            <button data-participant-count="24" role="radio" aria-checked="false">24 <small data-ko="극한 · 3회" data-en="EXTREME · 3 TRIES">극한 · 3회</small></button>
           </div>
         </div>
-        <div class="rule-strip"><span id="subject-count-summary">참가자 6명</span><span id="rule-count-summary">정답 후보 2개</span><span data-ko="기회 3번" data-en="3 CHANCES">기회 3번</span></div>
+        <div class="rule-strip"><span id="subject-count-summary">참가자 6명</span><span id="rule-count-summary">정답 후보 2개</span><span id="attempt-count-summary">기회 2번</span></div>
         <button id="play-button" class="primary"><span data-ko="게임 시작" data-en="START GAME">게임 시작</span> <b>→</b></button>
       </section>
       <section id="leaderboard-screen" class="screen leaderboard-screen" aria-hidden="true">
@@ -118,7 +118,7 @@
       <section id="rules-screen" class="screen rules-screen" aria-hidden="true">
         <div class="rules-dialog">
           <h2 data-ko="진짜 규칙을 찾고, 한 명을 지목하세요." data-en="FIND THE TRUE RULE. ACCUSE THE ONE.">진짜 규칙을 찾고, 한 명을 지목하세요.</h2>
-          <p class="rules-chances" data-ko="기회는 3번입니다." data-en="YOU HAVE THREE CHANCES.">기회는 3번입니다.</p>
+          <p id="rules-chances" class="rules-chances">기회는 2번입니다.</p>
           <div class="rules-example">
             <span data-ko="규칙" data-en="RULE">규칙</span>
             <div class="rules-example-labels"><small data-ko="(조건)" data-en="(CAUSE)">(조건)</small><small data-ko="(행동)" data-en="(ACTION)">(행동)</small></div>
