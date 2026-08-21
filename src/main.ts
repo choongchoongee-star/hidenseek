@@ -1111,7 +1111,7 @@ function updateSoundButtons() {
   pauseButton.textContent=soundEnabled?copy('소리 켜짐','SOUND ON'):copy('소리 꺼짐','SOUND OFF');
   for(const button of [hudButton,pauseButton]) {button.classList.toggle('muted',!soundEnabled);button.setAttribute('aria-pressed',String(soundEnabled));button.setAttribute('aria-label',soundEnabled?copy('소리 끄기','Turn sound off'):copy('소리 켜기','Turn sound on'));}
   const percent=Math.round(soundVolume*100);
-  volumeSliders.forEach(slider=>{slider.value=String(percent);slider.setAttribute('aria-label',copy('음량','Volume'));slider.setAttribute('aria-valuetext',`${percent}%`);});
+  volumeSliders.forEach(slider=>{slider.value=String(percent);slider.style.setProperty('--volume-progress',`${percent}%`);slider.setAttribute('aria-label',copy('음량','Volume'));slider.setAttribute('aria-valuetext',`${percent}%`);});
   volumeOutputs.forEach(output=>output.textContent=`${percent}%`);
 }
 
