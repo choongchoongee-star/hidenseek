@@ -296,6 +296,7 @@ const controlsCloseButton = document.querySelector<HTMLButtonElement>('#controls
 const rulesScreen = document.querySelector<HTMLElement>('#rules-screen')!;
 const rulesContinueButton = document.querySelector<HTMLButtonElement>('#rules-continue-button')!;
 const dontShowRules = document.querySelector<HTMLInputElement>('#dont-show-rules')!;
+const rulesMajorityExample = document.querySelector<HTMLElement>('#rules-majority-example')!;
 const participantButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-participant-count]')];
 const subjectCountSummary=document.querySelector<HTMLElement>('#subject-count-summary')!;
 const ruleCountSummary=document.querySelector<HTMLElement>('#rule-count-summary')!;
@@ -498,14 +499,14 @@ function readControlsAcknowledged() {
 }
 
 function readRulesDismissed() {
-  try { return localStorage.getItem('the-odd-one-rules-v1')==='hidden'; }
+  try { return localStorage.getItem('the-odd-one-rules-v2')==='hidden'; }
   catch { return false; }
 }
 
 function rememberRulesDismissed() {
   if(!dontShowRules.checked)return;
   rulesDismissed=true;
-  try { localStorage.setItem('the-odd-one-rules-v1','hidden'); }
+  try { localStorage.setItem('the-odd-one-rules-v2','hidden'); }
   catch { /* The rules screen will simply appear again next time. */ }
 }
 
@@ -664,6 +665,10 @@ function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
   subjectCountSummary.textContent=copy(`참가자 ${count}명`,`${count} NPCS`);
   ruleCountSummary.textContent=copy(`정답 후보 ${ruleCount}개`,`${ruleCount} TARGET RULES`);
   ruleCountBadge.textContent=String(ruleCount);
+  rulesMajorityExample.textContent=copy(
+    `${count}명 중 ${count-1}명은 그 규칙을 지키고, 한 명만 지키지 않습니다. 그 한 명이 정답입니다.`,
+    `${count-1} of ${count} NPCs follow it. Only one does not. That one NPC is the answer.`,
+  );
   participantButtons.forEach(button=>{
     const active=Number(button.dataset.participantCount)===count;
     button.classList.toggle('active',active);button.setAttribute('aria-checked',String(active));

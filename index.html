@@ -122,14 +122,20 @@
       <section id="rules-screen" class="screen rules-screen" aria-hidden="true">
         <div class="rules-dialog">
           <div class="eyebrow" data-ko="게임 규칙" data-en="HOW TO PLAY">게임 규칙</div>
-          <h2 data-ko="한 명만 다릅니다." data-en="ONE PERSON BREAKS THE RULE.">한 명만 다릅니다.</h2>
-          <p class="rules-lead" data-ko="행동의 조건과 결과를 관찰해 다수가 따르는 단 하나의 규칙을 찾으세요." data-en="Observe what triggers each action and find the one rule followed by the majority.">행동의 조건과 결과를 관찰해 다수가 따르는 단 하나의 규칙을 찾으세요.</p>
+          <h2 data-ko="규칙을 어긴 한 명을 찾으세요." data-en="FIND THE ONE WHO BREAKS THE RULE.">규칙을 어긴 한 명을 찾으세요.</h2>
+          <p class="rules-lead" data-ko="NPC들은 어떤 일이 생기면 정해진 행동을 합니다. 화면의 ‘규칙 후보’는 무엇을 보고 어떤 행동을 하는지 적어 둔 목록입니다." data-en="NPCs perform an action when something happens. The Rule Candidates list shows what might trigger each action.">NPC들은 어떤 일이 생기면 정해진 행동을 합니다. 화면의 ‘규칙 후보’는 무엇을 보고 어떤 행동을 하는지 적어 둔 목록입니다.</p>
+          <div class="rules-example">
+            <span data-ko="규칙 읽는 법" data-en="HOW TO READ A RULE">규칙 읽는 법</span>
+            <div><b data-ko="빨간 옷 가까이 가기" data-en="GO NEAR A RED SHIRT">빨간 옷 가까이 가기</b><i>→</i><strong data-ko="점프하기" data-en="JUMP">점프하기</strong></div>
+            <small data-ko="먼저 무슨 일이 생겼는지 보고, 바로 뒤에 어떤 행동을 하는지 확인하세요." data-en="Watch what happens first, then check which action follows.">먼저 무슨 일이 생겼는지 보고, 바로 뒤에 어떤 행동을 하는지 확인하세요.</small>
+          </div>
           <ol class="rules-steps">
-            <li><b>01</b><span><strong data-ko="정답 규칙은 하나" data-en="ONE TARGET RULE">정답 규칙은 하나</strong><small data-ko="후보 중 한 규칙만 한 명을 제외한 모두가 지킵니다." data-en="Exactly one candidate is followed by everyone except one NPC.">후보 중 한 규칙만 한 명을 제외한 모두가 지킵니다.</small></span></li>
-            <li><b>02</b><span><strong data-ko="나머지는 혼란용" data-en="THE REST ARE NOISE">나머지는 혼란용</strong><small data-ko="다른 후보 규칙은 절반 정도만 지킵니다. Odd도 지킬 수도, 안 지킬 수도 있습니다." data-en="The other candidates are followed by about half. The Odd NPC may follow them or not.">다른 후보 규칙은 절반 정도만 지킵니다. Odd도 지킬 수도, 안 지킬 수도 있습니다.</small></span></li>
-            <li><b>🔔</b><span><strong data-ko="종은 정답이 아님" data-en="THE BELL IS A DECOY">종은 정답이 아님</strong><small data-ko="종이 울리면 일부 NPC에게 행동을 강제해 관찰을 방해합니다." data-en="When the bell rings, it forces some NPCs to act and disrupts observation.">종이 울리면 일부 NPC에게 행동을 강제해 관찰을 방해합니다.</small></span></li>
+            <li><b>01</b><span><strong data-ko="같은 상황을 여러 번 보세요" data-en="WATCH THE SAME EVENT MORE THAN ONCE">같은 상황을 여러 번 보세요</strong><small data-ko="한 번만 보고 정하지 말고, 같은 조건에서 누가 행동하고 누가 행동하지 않는지 비교하세요." data-en="Do not decide after one event. Compare who acts and who does not when the same trigger happens.">한 번만 보고 정하지 말고, 같은 조건에서 누가 행동하고 누가 행동하지 않는지 비교하세요.</small></span></li>
+            <li><b>02</b><span><strong data-ko="진짜 정답 규칙은 딱 하나예요" data-en="THERE IS EXACTLY ONE TRUE RULE">진짜 정답 규칙은 딱 하나예요</strong><small id="rules-majority-example">6명 중 5명은 그 규칙을 지키고, 한 명만 지키지 않습니다.</small></span></li>
+            <li><b>03</b><span><strong data-ko="다른 규칙은 가짜 단서예요" data-en="THE OTHER RULES ARE DECOYS">다른 규칙은 가짜 단서예요</strong><small data-ko="다른 후보는 절반 정도만 지킵니다. 그래서 여러 규칙에서 이상해 보이는 사람 말고, 거의 모두가 지키는 규칙을 먼저 찾아야 합니다." data-en="Only about half follow the other candidates. First find the rule that almost everyone follows, not the person who simply looks unusual.">다른 후보는 절반 정도만 지킵니다. 그래서 여러 규칙에서 이상해 보이는 사람 말고, 거의 모두가 지키는 규칙을 먼저 찾아야 합니다.</small></span></li>
           </ol>
-          <p class="rules-goal" data-ko="세 번의 기회 안에 그 규칙을 어기는 단 한 명을 지목하세요." data-en="You have three chances to accuse the one person who breaks that rule.">세 번의 기회 안에 그 규칙을 어기는 단 한 명을 지목하세요.</p>
+          <div class="rules-bell"><b>🔔</b><span><strong data-ko="종소리는 정답이 아니에요" data-en="THE BELL IS NEVER THE ANSWER">종소리는 정답이 아니에요</strong><small data-ko="종이 울리면 일부 NPC가 갑자기 행동합니다. 관찰을 헷갈리게 하는 방해이므로, 종 직후 행동은 정답을 찾을 때 잠시 빼고 보세요." data-en="The bell suddenly forces some NPCs to act. It is only a distraction, so ignore actions immediately after the bell when testing a rule.">종이 울리면 일부 NPC가 갑자기 행동합니다. 관찰을 헷갈리게 하는 방해이므로, 종 직후 행동은 정답을 찾을 때 잠시 빼고 보세요.</small></span></div>
+          <p class="rules-goal" data-ko="목표는 ‘거의 모두가 지키는 규칙 1개’와 ‘그 규칙만 어기는 NPC 1명’을 찾는 것입니다. 확신이 들면 지목하세요. 기회는 3번입니다." data-en="Find one rule followed by almost everyone, then accuse the one NPC who breaks it. You have three chances.">목표는 ‘거의 모두가 지키는 규칙 1개’와 ‘그 규칙만 어기는 NPC 1명’을 찾는 것입니다. 확신이 들면 지목하세요. 기회는 3번입니다.</p>
           <label class="dont-show-rules"><input id="dont-show-rules" type="checkbox" /><span data-ko="다시 보지 않기" data-en="DON'T SHOW AGAIN">다시 보지 않기</span></label>
           <button id="rules-continue-button" class="primary"><span data-ko="계속" data-en="CONTINUE">계속</span> <b>→</b></button>
         </div>
