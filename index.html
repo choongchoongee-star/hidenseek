@@ -117,19 +117,18 @@
       </section>
       <section id="rules-screen" class="screen rules-screen" aria-hidden="true">
         <div class="rules-dialog">
-          <div class="eyebrow" data-ko="게임 규칙" data-en="HOW TO PLAY">게임 규칙</div>
           <h2 data-ko="진짜 규칙을 찾고, 한 명을 지목하세요." data-en="FIND THE TRUE RULE. ACCUSE THE ONE.">진짜 규칙을 찾고, 한 명을 지목하세요.</h2>
-          <p class="rules-lead" data-ko="NPC는 어떤 일이 생기면 정해진 행동을 합니다. 화면의 ‘규칙 후보’에서 원인과 행동을 확인하세요." data-en="NPCs perform a set action when something happens. Check each cause and action in Rule Candidates.">NPC는 어떤 일이 생기면 정해진 행동을 합니다. 화면의 ‘규칙 후보’에서 원인과 행동을 확인하세요.</p>
+          <p class="rules-chances" data-ko="기회는 3번입니다." data-en="YOU HAVE THREE CHANCES.">기회는 3번입니다.</p>
           <div class="rules-example">
-            <span data-ko="규칙 읽는 법" data-en="HOW TO READ A RULE">규칙 읽는 법</span>
-            <div><b data-ko="빨간 옷 가까이 가기" data-en="GO NEAR A RED SHIRT">빨간 옷 가까이 가기</b><i>→</i><strong data-ko="점프하기" data-en="JUMP">점프하기</strong></div>
+            <span data-ko="규칙" data-en="RULE">규칙</span>
+            <div class="rules-example-labels"><small data-ko="(조건)" data-en="(CAUSE)">(조건)</small><small data-ko="(행동)" data-en="(ACTION)">(행동)</small></div>
+            <div class="rules-example-action"><b data-ko="빨간 옷 가까이 가기" data-en="GO NEAR A RED SHIRT">빨간 옷 가까이 가기</b><i>→</i><strong data-ko="점프하기" data-en="JUMP">점프하기</strong></div>
           </div>
           <ul class="rules-steps">
-            <li><span><strong data-ko="진짜 규칙" data-en="TRUE RULE">진짜 규칙</strong><small id="rules-majority-example">6명 중 5명은 지키고, 한 명만 어깁니다.</small></span></li>
-            <li><span><strong data-ko="가짜 규칙" data-en="FAKE RULES">가짜 규칙</strong><small data-ko="다른 규칙은 일부 NPC만 지킵니다." data-en="Only some NPCs follow the other rules.">다른 규칙은 일부 NPC만 지킵니다.</small></span></li>
+            <li><span><strong data-ko="진짜 규칙:" data-en="TRUE RULE:">진짜 규칙:</strong><small id="rules-majority-example">6명 중 5명은 지키고, 한 명만 어깁니다.</small></span></li>
+            <li><span><strong data-ko="가짜 규칙:" data-en="FAKE RULES:">가짜 규칙:</strong><small data-ko="다른 규칙은 일부 NPC만 지킵니다." data-en="Only some NPCs follow the other rules.">다른 규칙은 일부 NPC만 지킵니다.</small></span></li>
           </ul>
-          <div class="rules-bell"><b>🔔</b><span><strong data-ko="종소리 규칙도 가짜 규칙입니다" data-en="THE BELL RULE IS ALSO FAKE">종소리 규칙도 가짜 규칙입니다</strong><small data-ko="종이 울리면 일부 NPC가 행동하지만, 정답은 아닙니다." data-en="Some NPCs act when the bell rings, but it is never the answer.">종이 울리면 일부 NPC가 행동하지만, 정답은 아닙니다.</small></span></div>
-          <p class="rules-goal"><span data-ko="같은 상황을 여러 번 본 뒤, 진짜 규칙을 어긴 한 명을 지목하세요." data-en="Watch the same event more than once, then accuse the one who breaks the true rule.">같은 상황을 여러 번 본 뒤, 진짜 규칙을 어긴 한 명을 지목하세요.</span><strong data-ko="기회는 3번입니다." data-en="YOU HAVE THREE CHANCES.">기회는 3번입니다.</strong></p>
+          <div class="rules-bell"><strong data-ko="종소리 규칙도 가짜 규칙입니다" data-en="THE BELL RULE IS ALSO FAKE">종소리 규칙도 가짜 규칙입니다</strong><small data-ko="종이 울리면 일부 NPC가 행동하지만, 정답은 아닙니다." data-en="Some NPCs act when the bell rings, but it is never the answer.">종이 울리면 일부 NPC가 행동하지만, 정답은 아닙니다.</small></div>
           <label class="dont-show-rules"><input id="dont-show-rules" type="checkbox" /><span data-ko="다시 보지 않기" data-en="DON'T SHOW AGAIN">다시 보지 않기</span></label>
           <button id="rules-continue-button" class="primary"><span data-ko="계속" data-en="CONTINUE">계속</span> <b>→</b></button>
         </div>
