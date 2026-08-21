@@ -112,30 +112,32 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 
 /* Touch mission list: always visible, compact and transparent */
 .touch-mode .rule-notes-toggle { display: none; }
-.touch-mode .rule-notes { left: max(12px,env(safe-area-inset-left)); right: auto; top: calc(78px + env(safe-area-inset-top)); bottom: auto; width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); max-height: none; padding: 0; overflow: visible; border-radius: 0; background: transparent; color: #f4f1e8; box-shadow: none; letter-spacing: .02em; transform: translateX(-10px); transition: opacity .16s ease, transform .25s, visibility .25s; }
-.touch-mode.round-active .rule-notes.open { opacity: .7; visibility: visible; transform: translateX(0); }
+.touch-mode .rule-notes { left: max(12px,env(safe-area-inset-left)); right: auto; top: calc(76px + env(safe-area-inset-top)); bottom: auto; width: min(276px,calc(100vw - 116px - env(safe-area-inset-left) - env(safe-area-inset-right))); max-height: none; padding: 0; overflow: visible; border-radius: 0; background: transparent; color: #f4f1e8; box-shadow: none; letter-spacing: .01em; transform: translateX(-10px); transition: opacity .16s ease, transform .25s, visibility .25s; }
+.touch-mode.round-active .rule-notes.open { opacity: .82; visibility: visible; transform: translateX(0); }
 .touch-mode.round-active .rule-notes.open:active { opacity: 1; }
 .touch-mode.round-active.camera-gesture .rule-notes.open { opacity: .12; pointer-events: none; }
 .touch-mode .rule-notes::after { display: none; }
-.touch-mode .rule-notes header { min-height: 22px; padding: 0 0 4px; border: 0; gap: 8px; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
+.touch-mode .rule-notes header { min-height: 24px; padding: 0 0 5px; border: 0; gap: 6px; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
 .touch-mode .rule-notes header > div { min-width: 0; display: flex; align-items: baseline; white-space: nowrap; }
-.touch-mode .rule-notes header b { color: var(--yellow); font-size: 11px; }
+.touch-mode .rule-notes header b { color: var(--yellow); font-size: 11px; font-weight: 700; }
 .touch-mode .mobile-bell-status { min-width: 0; display: block; overflow: hidden; color: #ffb3a7; font-size: 10px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .touch-mode .rule-notes header button { display: none; }
-.touch-mode .rule-note-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px 8px; overflow: visible; }
-.touch-mode .rule-note { min-width: 0; min-height: 44px; grid-template-columns: 28px minmax(0,1fr); gap: 5px; padding: 1px 0; border: 0; color: #f4f1e8; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
+.touch-mode .rule-note-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 2px 8px; overflow: visible; }
+.touch-mode .rule-note { min-width: 0; min-height: 44px; grid-template-columns: 27px minmax(0,1fr); gap: 5px; padding: 1px 0; border: 0; color: #f4f1e8; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
+.touch-mode .rule-note[hidden] { display: none; }
+.touch-mode .rule-note[aria-disabled="true"] { display: none; }
 .touch-mode .rule-note:hover { background: transparent; }
 .touch-mode .rule-note:active { color: var(--yellow-soft); }
 .touch-mode .rule-note:focus-visible { outline: 0; }
 .touch-mode .rule-note:focus-visible .note-index { box-shadow: 0 0 0 1px var(--yellow-soft); }
-.touch-mode .note-index { display: grid; place-items: center; width: 28px; height: 28px; border-left: 2px solid rgba(244,185,66,.7); background: rgba(10,11,9,.22); color: rgba(244,241,232,.8); font-weight: 700; opacity: 1; }
+.touch-mode .note-index { display: grid; place-items: center; width: 27px; height: 30px; border-left: 2px solid rgba(244,185,66,.78); background: linear-gradient(90deg,rgba(10,11,9,.56),rgba(10,11,9,.12)); color: rgba(244,241,232,.84); font-weight: 700; opacity: 1; }
 .touch-mode .note-mark { display: none; }
 .touch-mode .rule-note.mark-question .note-index::after { content: '?'; color: #77c9ff; }
 .touch-mode .rule-note.mark-check .note-index::after { content: '✓'; color: #75e1bb; }
 .touch-mode .rule-note.mark-strike .note-index::after { content: '—'; color: #ff8c7e; }
 .touch-mode .rule-note.mark-question .note-index, .touch-mode .rule-note.mark-check .note-index, .touch-mode .rule-note.mark-strike .note-index { grid-template-columns: auto auto; column-gap: 1px; }
 .touch-mode .note-copy b { display: none; }
-.touch-mode .note-copy small { display: -webkit-box; margin: 0; overflow: hidden; line-height: 1.35; white-space: normal; text-overflow: ellipsis; opacity: .9; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.touch-mode .note-copy small { display: -webkit-box; margin: 0; overflow: hidden; font-size: 10px; line-height: 1.35; white-space: normal; text-overflow: ellipsis; opacity: .94; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .touch-mode .bell-note { display: none; }
 .touch-mode .rule-notes footer { display: none; }
 .touch-mode .desktop-note-help { display: none; }
@@ -320,10 +322,25 @@ kbd.wide-key { min-width: 80px; }
 /* Touch gameplay */
 .touch-mode #game { touch-action: none; }
 .touch-mode .crosshair, .touch-mode .target-label, .touch-mode .controls { display: none; }
-.touch-mode .speed-controls { right: max(12px,env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); }
+.touch-mode .top-hud { padding: calc(10px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) 14px max(12px,env(safe-area-inset-left)); align-items: flex-start; justify-content: space-between; background: linear-gradient(180deg,rgba(7,8,7,.68),rgba(7,8,7,.18) 68%,transparent); }
+.touch-mode .mobile-pause { width: 46px; height: 46px; min-height: 46px; justify-content: center; padding: 0; border: 1px solid rgba(255,255,255,.1); border-radius: 15px; background: rgba(15,16,14,.8); box-shadow: 0 7px 22px rgba(0,0,0,.22); }
+.touch-mode .mobile-pause span { font-size: 17px; }
+.touch-mode .mobile-pause b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.touch-mode .top-actions { gap: 6px; }
+.touch-mode .language-toggle { width: 44px; min-width: 44px; height: 46px; padding: 0; border: 1px solid rgba(255,255,255,.08); border-radius: 15px; background: rgba(15,16,14,.74); }
+.touch-mode .hud-volume-control { height: 46px; min-height: 46px; padding-right: 8px; border: 1px solid rgba(255,255,255,.08); border-radius: 15px; background: rgba(15,16,14,.74); overflow: hidden; }
+.touch-mode .hud-volume-control .sound-toggle { width: 42px; min-width: 42px; height: 44px; padding: 0; font-size: 0; }
+.touch-mode .hud-volume-control .sound-toggle::before { margin: 0; font-size: 18px; }
+.touch-mode .hud-volume-control .volume-slider { width: 44px; }
+.touch-mode .top-hud .status { position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 50%; min-width: 61px; height: 46px; min-height: 46px; justify-content: center; padding: 0 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 15px; background: rgba(15,16,14,.74); transform: translateX(-50%); font-variant-numeric: tabular-nums; box-shadow: 0 7px 22px rgba(0,0,0,.18); }
+.touch-mode .attempts-panel { top: calc(70px + env(safe-area-inset-top)); right: max(12px,env(safe-area-inset-right)); min-height: 34px; display: flex; align-items: center; padding: 0 9px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(15,16,14,.62); text-shadow: none; backdrop-filter: blur(8px); }
+.touch-mode .attempts { margin: 0; gap: 4px; }
+.touch-mode .attempt { width: 18px; height: 6px; border-radius: 3px; }
+.touch-mode .speed-controls { right: auto; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); padding: 4px; border: 1px solid rgba(255,255,255,.08); border-radius: 24px; background: rgba(13,14,12,.84); transform: translate(-50%,8px); }
+.touch-mode.round-active:not(.paused) .speed-controls { transform: translate(-50%,0); }
 .touch-mode.selection-active .speed-controls { bottom: calc(178px + env(safe-area-inset-bottom)); }
 .touch-mode .speed-controls > span { display: none; }
-.touch-mode .speed-controls button { min-width: 48px; height: 44px; }
+.touch-mode .speed-controls button { min-width: 48px; height: 42px; border-radius: 20px; }
 .touch-mode .mobile-ui { display: block; }
 .touch-mode .top-hud { justify-content: space-between; }
 .touch-mode .mobile-pause { display: inline-flex; }
