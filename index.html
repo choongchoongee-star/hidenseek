@@ -29,8 +29,8 @@
       <button id="rule-notes-toggle" class="hud rule-notes-toggle" aria-controls="rule-notes" aria-expanded="false"><span data-ko="규칙 후보" data-en="RULE CANDIDATES">규칙 후보</span> <b id="rule-count-badge">2</b></button>
       <aside id="rule-notes" class="hud rule-notes open" aria-label="Rule candidate checklist" aria-hidden="true">
         <header>
-          <div><b data-ko="규칙 후보" data-en="RULE CANDIDATES">규칙 후보</b><span class="mobile-rule-hint" data-ko=" · 탭으로 표시" data-en=" · TAP TO MARK"> · 탭으로 표시</span></div>
-          <span id="mobile-bell-status" class="mobile-bell-status">🔔 강제 점프 · 정답 아님</span>
+          <div><b data-ko="규칙 후보" data-en="RULE CANDIDATES">규칙 후보</b></div>
+          <span id="mobile-bell-status" class="mobile-bell-status">🔔 강제 점프</span>
           <button id="rule-notes-close" aria-label="규칙 후보 접기">×</button>
         </header>
         <div class="rule-note-list">
@@ -38,7 +38,7 @@
           <button class="rule-note" data-rule-note="hatBow"><span class="note-index">2</span><i class="note-mark"></i><span class="note-copy"><b data-ko="모자에게 인사" data-en="HAT BOW">모자에게 인사</b><small data-ko="모자 쓴 사람 근처 → 허리 숙이기" data-en="Near a hat → BOW">모자 쓴 사람 근처 → 허리 숙이기</small></span></button>
           <button class="rule-note" data-rule-note="centerSit"><span class="note-index">3</span><i class="note-mark"></i><span class="note-copy"><b data-ko="중앙 앉기" data-en="CENTER SIT">중앙 앉기</b><small data-ko="중앙 구역 진입 → 앉기" data-en="Enter the center → SIT">중앙 구역 진입 → 앉기</small></span></button>
           <button class="rule-note" data-rule-note="greetingWave"><span class="note-index">4</span><i class="note-mark"></i><span class="note-copy"><b data-ko="마주보기 인사" data-en="GREETING WAVE">마주보기 인사</b><small data-ko="서로 마주봄 → 둘 다 손 흔들기" data-en="Face each other → both WAVE">서로 마주봄 → 둘 다 손 흔들기</small></span></button>
-          <button class="rule-note bell-note" data-rule-note="bell" aria-disabled="true" tabindex="-1"><span class="note-index">🔔</span><i class="note-mark"></i><span class="note-copy"><b data-ko="종 이벤트" data-en="BELL EVENT">종 이벤트</b><small data-ko="일부 참가자 강제 행동 · 정답 규칙 아님" data-en="Forces an action · NOT A TARGET">일부 참가자 강제 행동 · 정답 규칙 아님</small></span></button>
+          <button class="rule-note bell-note" data-rule-note="bell" aria-disabled="true" tabindex="-1"><span class="note-index">🔔</span><i class="note-mark"></i><span class="note-copy"><b data-ko="종 이벤트" data-en="BELL EVENT">종 이벤트</b><small data-ko="일부 참가자 강제 행동" data-en="Forces an action">일부 참가자 강제 행동</small></span></button>
         </div>
         <footer><span id="desktop-note-help" class="desktop-note-help">1–2: ? → ✓ → 취소선 → 해제</span><span class="mobile-note-help" data-ko="탭: ? → ✓ → —" data-en="TAP: ? → ✓ → —">탭: ? → ✓ → —</span></footer>
       </aside>
@@ -80,8 +80,8 @@
             <button class="active" data-game-mode="casual" role="radio" aria-checked="true"><b data-ko="일반 게임" data-en="CASUAL">일반 게임</b><small data-ko="로그인 없이 플레이" data-en="PLAY WITHOUT LOGIN">로그인 없이 플레이</small></button>
             <button data-game-mode="ranked" role="radio" aria-checked="false"><b data-ko="랭크 게임" data-en="RANKED">랭크 게임</b><small data-ko="Google 이름으로 공개 기록" data-en="PUBLIC RECORD WITH GOOGLE NAME">Google 이름으로 공개 기록</small></button>
           </div>
-          <div id="account-status" class="account-status" aria-live="polite">
-            <span id="account-label" data-ko="랭크 게임은 Google 로그인이 필요합니다" data-en="RANKED PLAY REQUIRES GOOGLE LOGIN">랭크 게임은 Google 로그인이 필요합니다</span>
+          <div id="account-status" class="account-status" aria-live="polite" hidden>
+            <span id="account-label"></span>
             <button id="sign-out-button" hidden data-ko="로그아웃" data-en="SIGN OUT">로그아웃</button>
           </div>
           <button id="leaderboard-button" class="leaderboard-link"><span data-ko="클리어 랭킹" data-en="CLEAR LEADERBOARD">클리어 랭킹</span><b>↗</b></button>
@@ -97,7 +97,6 @@
         </div>
         <div class="rule-strip"><span id="subject-count-summary">참가자 6명</span><span id="rule-count-summary">정답 후보 2개</span><span data-ko="기회 3번" data-en="3 CHANCES">기회 3번</span></div>
         <button id="play-button" class="primary"><span data-ko="게임 시작" data-en="START GAME">게임 시작</span> <b>→</b></button>
-        <small id="device-note" data-ko="소리를 켜면 종 이벤트를 더 쉽게 알아챌 수 있어요" data-en="TURN UP THE SOUND TO CATCH THE BELL EVENT">소리를 켜면 종 이벤트를 더 쉽게 알아챌 수 있어요</small>
       </section>
       <section id="leaderboard-screen" class="screen leaderboard-screen" aria-hidden="true">
         <div class="leaderboard-dialog">

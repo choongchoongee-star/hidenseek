@@ -314,6 +314,7 @@ const volumeSliders=[...document.querySelectorAll<HTMLInputElement>('.volume-sli
 const volumeOutputs=[...document.querySelectorAll<HTMLOutputElement>('.volume-control output')];
 const gameModeButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-game-mode]')];
 const accountLabel=document.querySelector<HTMLElement>('#account-label')!;
+const accountStatus=document.querySelector<HTMLElement>('#account-status')!;
 const signOutButton=document.querySelector<HTMLButtonElement>('#sign-out-button')!;
 const leaderboardScreen=document.querySelector<HTMLElement>('#leaderboard-screen')!;
 const leaderboardList=document.querySelector<HTMLElement>('#leaderboard-list')!;
@@ -388,10 +389,11 @@ function updateGameModeUI() {
     button.setAttribute('aria-checked',String(selected));
     button.disabled=authBusy||roundStarting;
   });
+  accountStatus.hidden=!authBusy&&!authUser;
   signOutButton.hidden=!authUser;
   if(authBusy)accountLabel.textContent=copy('Google 로그인 창을 확인하세요','CHECK THE GOOGLE SIGN-IN WINDOW');
   else if(authUser)accountLabel.textContent=copy(`${authUser.displayName||'플레이어'} · 로그인됨`,`${authUser.displayName||'PLAYER'} · SIGNED IN`);
-  else accountLabel.textContent=copy('랭크 게임은 Google 로그인이 필요합니다','RANKED PLAY REQUIRES GOOGLE LOGIN');
+  else accountLabel.textContent='';
   const playButton=document.querySelector<HTMLButtonElement>('#play-button')!;
   playButton.disabled=roundStarting;
   const playLabel=playButton.querySelector('span')!;
@@ -684,7 +686,7 @@ function setRuleNotesOpen(value:boolean) {
 function renderRuleNotes() {
   RULE_NOTE_ORDER=[...activeRules.map(rule=>rule.id),'bell'];
   desktopNoteHelp.textContent=copy(`1–${activeRules.length}: ? → ✓ → 취소선 → 해제`,`1–${activeRules.length}: ? → ✓ → STRIKE → CLEAR`);
-  mobileBellStatus.textContent=copy(`🔔 강제 ${ACTION_LABELS[bellAction].ko} · 정답 아님`,`🔔 ${ACTION_LABELS[bellAction].en} · DECOY`);
+  mobileBellStatus.textContent=copy(`🔔 강제 ${ACTION_LABELS[bellAction].ko}`,`🔔 ${ACTION_LABELS[bellAction].en}`);
   ruleNoteRows.forEach((row,index)=>{
     const ruleId=RULE_NOTE_ORDER[index];
     row.hidden=!ruleId;
@@ -696,7 +698,7 @@ function renderRuleNotes() {
     const detail=row.querySelector<HTMLElement>('.note-copy small')!;
     if(ruleId==='bell') {
       const label={ko:`종 ${ACTION_LABELS[bellAction].ko}`,en:`BELL ${ACTION_LABELS[bellAction].en}`};
-      const note={ko:`일부 참가자 강제 ${ACTION_LABELS[bellAction].ko} · 정답 아님`,en:`Forces some NPCs to ${ACTION_LABELS[bellAction].en} · NOT A TARGET`};
+      const note={ko:`일부 참가자 강제 ${ACTION_LABELS[bellAction].ko}`,en:`Forces some NPCs to ${ACTION_LABELS[bellAction].en}`};
       title.dataset.ko=label.ko;title.dataset.en=label.en;detail.dataset.ko=note.ko;detail.dataset.en=note.en;
     } else {
       const rule=RULES.find(candidate=>candidate.id===ruleId)!;

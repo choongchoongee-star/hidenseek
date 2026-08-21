@@ -72,7 +72,7 @@ button:focus-visible { outline: 2px solid var(--yellow-soft); outline-offset: 3p
 .rule-notes header, .rule-note-list, .rule-notes footer { position: relative; z-index: 1; }
 .rule-notes header { min-height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 11px 12px 10px 17px; border-bottom: 2px solid rgba(29,28,22,.55); }
 .rule-notes header b { font-size: 16px; }
-.mobile-rule-hint, .mobile-bell-status { display: none; }
+.mobile-bell-status { display: none; }
 .rule-notes header button { width: 44px; height: 44px; padding: 0; border: 0; background: rgba(29,28,22,.08); color: #1d1c16; font-size: 23px; cursor: pointer; }
 .rule-note-list { overflow-y: auto; }
 .rule-note { width: 100%; min-height: 58px; display: grid; grid-template-columns: 18px 30px minmax(0,1fr); align-items: center; gap: 9px; padding: 8px 13px; border: 0; border-bottom: 1px solid rgba(43,53,55,.2); background: transparent; color: #1d1c16; text-align: left; cursor: pointer; }
@@ -120,7 +120,6 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .touch-mode .rule-notes header { min-height: 22px; padding: 0 0 4px; border: 0; gap: 8px; text-shadow: 0 2px 8px rgba(0,0,0,.95); }
 .touch-mode .rule-notes header > div { min-width: 0; display: flex; align-items: baseline; white-space: nowrap; }
 .touch-mode .rule-notes header b { color: var(--yellow); font-size: 11px; }
-.touch-mode .mobile-rule-hint { display: inline; color: rgba(244,241,232,.72); font-size: 10px; }
 .touch-mode .mobile-bell-status { min-width: 0; display: block; overflow: hidden; color: #ffb3a7; font-size: 10px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .touch-mode .rule-notes header button { display: none; }
 .touch-mode .rule-note-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px 8px; overflow: visible; }
@@ -178,6 +177,7 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .game-mode-selector b { font-size: 13px; }
 .game-mode-selector small { margin-top: 3px; color: inherit; font-size: 10px; font-weight: 500; opacity: .75; }
 .account-status { min-height: 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 2px 0; color: rgba(244,241,232,.5); font-size: 10px; }
+.account-status[hidden] { display: none; }
 .account-status button { flex: none; padding: 3px 0; border: 0; border-bottom: 1px solid rgba(244,241,232,.35); background: transparent; color: rgba(244,241,232,.72); font-size: 10px; cursor: pointer; }
 .account-status button:hover { color: var(--yellow); border-color: var(--yellow); }
 .leaderboard-link { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; margin-top: 5px; padding: 0 12px; border: 0; border-left: 2px solid var(--yellow); background: rgba(244,241,232,.06); color: #f4f1e8; font: 700 11px var(--font-ui); cursor: pointer; }
