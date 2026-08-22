@@ -110,6 +110,25 @@
           <div id="leaderboard-list" class="leaderboard-list" aria-live="polite"></div>
         </div>
       </section>
+      <section id="share-screen" class="screen share-screen" aria-hidden="true">
+        <div class="share-dialog">
+          <div id="share-card" class="share-card">
+            <div class="share-wordmark">FIND THE<br/><em>ODD ONE.</em></div>
+            <span id="share-mode" class="share-mode">일반 게임 · 6명</span>
+            <strong id="share-score">25,000</strong>
+            <small>POINTS</small>
+            <div class="share-stats">
+              <div><span data-ko="플레이 시간" data-en="PLAY TIME">플레이 시간</span><b id="share-time">00:00</b></div>
+              <div><span data-ko="오답" data-en="WRONG PICKS">오답</span><b id="share-wrong">0</b></div>
+            </div>
+            <p data-ko="이 점수를 넘을 수 있나요?" data-en="CAN YOU BEAT THIS SCORE?">이 점수를 넘을 수 있나요?</p>
+          </div>
+          <button id="share-link-button" class="primary"><span data-ko="친구에게 공유하기" data-en="SHARE WITH FRIENDS">친구에게 공유하기</span> <b>↗</b></button>
+          <small id="share-feedback" class="share-feedback" aria-live="polite"></small>
+          <button id="share-close-button" class="secondary" data-ko="결과로 돌아가기" data-en="BACK TO RESULT">결과로 돌아가기</button>
+          <button id="share-play-button" class="secondary" data-ko="나도 도전하기" data-en="TRY THIS GAME">나도 도전하기</button>
+        </div>
+      </section>
       <section id="rank-intro-screen" class="screen rank-intro-screen" aria-hidden="true">
         <div class="rank-intro-dialog">
           <div class="eyebrow" data-ko="랭크 도전" data-en="RANKED RUN">랭크 도전</div>
@@ -230,6 +249,7 @@
           <button id="rank-submit-button" class="primary"><span data-ko="기록 등록" data-en="SUBMIT SCORE">기록 등록</span> <b>→</b></button>
         </div>
         <p id="ranked-result-status" class="ranked-result-status" hidden></p>
+        <button id="share-result-button" class="secondary" hidden><span data-ko="결과 공유하기" data-en="SHARE RESULT">결과 공유하기</span> <b>↗</b></button>
         <button id="replay-button" class="primary"><span data-ko="다시 플레이" data-en="PLAY AGAIN">다시 플레이</span> <b>↻</b></button>
         <button id="result-home-button" class="secondary" data-ko="처음으로" data-en="HOME">처음으로</button>
       </section>

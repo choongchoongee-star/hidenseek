@@ -17,6 +17,7 @@ type GameMode = 'casual' | 'ranked';
 interface LocalizedCopy { ko: string; en: string; }
 interface RuleDefinition { id: RuleId; action: ActionName; label: LocalizedCopy; note: LocalizedCopy; stimulus?: 'red'|'blue'|'yellow'|'hat'; }
 interface ActivePointer { x: number; y: number; startX: number; startY: number; }
+interface SharedResult { mode:GameMode; score:number; participants:number; timeMs:number; wrongGuesses:number; }
 interface Subject {
   id: number;
   name: string;
@@ -336,6 +337,14 @@ const rankedResultStatus=document.querySelector<HTMLElement>('#ranked-result-sta
 const scoreSummary=document.querySelector<HTMLElement>('#score-summary')!;
 const roundScoreLabel=document.querySelector<HTMLElement>('#round-score')!;
 const totalScoreLabel=document.querySelector<HTMLElement>('#total-score')!;
+const shareResultButton=document.querySelector<HTMLButtonElement>('#share-result-button')!;
+const shareScreen=document.querySelector<HTMLElement>('#share-screen')!;
+const shareDialog=document.querySelector<HTMLElement>('.share-dialog')!;
+const shareModeLabel=document.querySelector<HTMLElement>('#share-mode')!;
+const shareScoreLabel=document.querySelector<HTMLElement>('#share-score')!;
+const shareTimeLabel=document.querySelector<HTMLElement>('#share-time')!;
+const shareWrongLabel=document.querySelector<HTMLElement>('#share-wrong')!;
+const shareFeedback=document.querySelector<HTMLElement>('#share-feedback')!;
 let gameMode:GameMode='casual';
 let authBusy=false;
 let roundStarting=false;
@@ -350,6 +359,7 @@ let rankedTotalTimeMs=0;
 let rankedWrongGuesses=0;
 let latestRoundScore=0;
 let rankedNickname=readRankedNickname();
+let activeShareResult:SharedResult|null=null;
 
 function copy(ko:string,en:string){return language==='ko'?ko:en;}
 
@@ -381,6 +391,7 @@ function applyLanguage() {
   RULE_NOTE_ORDER.forEach(updateRuleNote);
   if(controlsScreen.classList.contains('open'))updateControlsCloseButton();
   if(roundResult)updateResultCopy();
+  if(activeShareResult)renderShareResult(activeShareResult);
   updateGameModeUI();
   if(leaderboardScreen.classList.contains('open'))renderLeaderboard();
 }
@@ -1224,6 +1235,72 @@ function formatRunTime(milliseconds:number) {
   return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 }
 
+function resultForSharing():SharedResult|null {
+  if(roundResult!=='success')return null;
+  if(gameMode==='ranked') {
+    if(rankedRunState!=='completed')return null;
+    return {mode:'ranked',score:rankedTotalScore,participants:12,timeMs:rankedTotalTimeMs,wrongGuesses:rankedWrongGuesses};
+  }
+  return {mode:'casual',score:latestRoundScore,participants:participantCount,timeMs:Math.max(1,Math.round(roundElapsedTime*1000)),wrongGuesses:attemptLimit-attempts};
+}
+
+function buildShareUrl(result:SharedResult) {
+  const url=new URL(location.href);url.hash='';url.search='';
+  url.searchParams.set('result',result.mode);
+  url.searchParams.set('score',String(Math.round(result.score)));
+  url.searchParams.set('npc',String(result.participants));
+  url.searchParams.set('time',String(Math.max(1,Math.floor(result.timeMs/1000))));
+  url.searchParams.set('wrong',String(result.wrongGuesses));
+  return url.toString();
+}
+
+function parseSharedResult() : SharedResult|null {
+  const params=new URLSearchParams(location.search);
+  const mode=params.get('result');
+  const score=Number(params.get('score'));const participants=Number(params.get('npc'));const seconds=Number(params.get('time'));const wrongGuesses=Number(params.get('wrong'));
+  const validMode=mode==='casual'||mode==='ranked';
+  const validParticipants=participants===6||participants===9||participants===12;
+  const minimumScore=mode==='ranked'?30000:10000;const maximumScore=mode==='ranked'?75000:25000;const maximumWrong=mode==='ranked'?3:1;
+  if(!validMode||!validParticipants||(mode==='ranked'&&participants!==12)||!Number.isInteger(score)||score<minimumScore||score>maximumScore||!Number.isInteger(seconds)||seconds<1||seconds>86400||!Number.isInteger(wrongGuesses)||wrongGuesses<0||wrongGuesses>maximumWrong)return null;
+  return {mode,score,participants,timeMs:seconds*1000,wrongGuesses};
+}
+
+function renderShareResult(result:SharedResult) {
+  shareModeLabel.textContent=result.mode==='ranked'?copy('랭크 완주 · 6 → 9 → 12','RANKED CLEAR · 6 → 9 → 12'):copy(`일반 게임 · ${result.participants}명`,`CASUAL · ${result.participants} NPCS`);
+  shareScoreLabel.textContent=result.score.toLocaleString();shareTimeLabel.textContent=formatRunTime(result.timeMs);shareWrongLabel.textContent=copy(`${result.wrongGuesses}회`,String(result.wrongGuesses));
+}
+
+function openShareScreen(result:SharedResult,origin:'result'|'link') {
+  activeShareResult=result;renderShareResult(result);shareFeedback.textContent='';
+  shareDialog.className=`share-dialog ${origin}-origin`;shareScreen.classList.add('open');shareScreen.setAttribute('aria-hidden','false');
+  setTimeout(()=>document.querySelector<HTMLButtonElement>('#share-link-button')!.focus(),0);
+}
+
+function clearShareQuery() {
+  const url=new URL(location.href);['result','score','npc','time','wrong'].forEach(key=>url.searchParams.delete(key));history.replaceState(null,'',url);
+}
+
+function closeShareScreen() {
+  shareScreen.classList.remove('open');shareScreen.setAttribute('aria-hidden','true');
+  if(shareDialog.classList.contains('link-origin'))clearShareQuery();
+  activeShareResult=null;
+}
+
+async function shareActiveResult() {
+  if(!activeShareResult)return;
+  const url=buildShareUrl(activeShareResult);
+  const modeText=activeShareResult.mode==='ranked'?copy('랭크 완주','Ranked clear'):copy(`${activeShareResult.participants}명 일반 게임`,`${activeShareResult.participants}-NPC casual game`);
+  const text=copy(`THE ODD ONE ${modeText} · ${activeShareResult.score.toLocaleString()}점`,`THE ODD ONE ${modeText} · ${activeShareResult.score.toLocaleString()} points`);
+  try {
+    if(navigator.share){await navigator.share({title:'THE ODD ONE',text,url});shareFeedback.textContent=copy('공유했습니다.','SHARED.');}
+    else {await navigator.clipboard.writeText(`${text}\n${url}`);shareFeedback.textContent=copy('결과 링크를 복사했습니다.','RESULT LINK COPIED.');}
+  } catch(error) {
+    if(error instanceof DOMException&&error.name==='AbortError')return;
+    try {await navigator.clipboard.writeText(`${text}\n${url}`);shareFeedback.textContent=copy('결과 링크를 복사했습니다.','RESULT LINK COPIED.');}
+    catch {shareFeedback.textContent=copy('공유하지 못했습니다. 다시 시도해 주세요.','COULD NOT SHARE. TRY AGAIN.');}
+  }
+}
+
 function updateResultCopy(){
   const success=roundResult==='success';
   const ranked=gameMode==='ranked'&&rankedRunState!=='idle';
@@ -1238,11 +1315,15 @@ function updateResultCopy(){
   else resultTitle.textContent=success?copy('찾았습니다.','YOU FOUND IT.'):copy('추리에 실패했습니다.','CASE FAILED.');
   document.querySelector('#reveal-rule')!.textContent=targetRule.label[language];
   document.querySelector('#reveal-npc')!.textContent=subjects[oddId].name;
-  scoreSummary.hidden=!ranked;
-  if(ranked){roundScoreLabel.textContent=latestRoundScore.toLocaleString();totalScoreLabel.textContent=rankedTotalScore.toLocaleString();}
+  scoreSummary.hidden=!success;
+  scoreSummary.classList.toggle('single',!ranked);
+  const roundScoreTitle=scoreSummary.querySelector<HTMLElement>('div:first-child span')!;
+  roundScoreTitle.textContent=ranked?copy('이번 라운드','THIS ROUND'):copy('점수','SCORE');
+  if(success){roundScoreLabel.textContent=latestRoundScore.toLocaleString();if(ranked)totalScoreLabel.textContent=rankedTotalScore.toLocaleString();}
   const canSubmit=rankedRunState==='completed'&&(rankedSaveState===null||rankedSaveState==='error');
   rankSubmitPanel.hidden=!canSubmit;
   if(canSubmit&&rankNameInput.value==='')rankNameInput.value=rankedNickname;
+  shareResultButton.hidden=!resultForSharing();
   const replayLabel=document.querySelector<HTMLButtonElement>('#replay-button')!.querySelector('span')!;
   if(rankedRunState==='active'&&success)replayLabel.textContent=copy(`다음: ${RANKED_SEQUENCE[rankedStageIndex+1]}명`,`NEXT: ${RANKED_SEQUENCE[rankedStageIndex+1]} NPCS`);
   else if(rankedRunState==='completed'||rankedRunState==='failed')replayLabel.textContent=copy('처음부터 다시 도전','RETRY FROM THE START');
@@ -1284,9 +1365,10 @@ async function saveCompletedRankedRun() {
 
 function endRound(success:boolean){
   updateRoundClock();playing=false;paused=false;roundResult=success?'success':'fail';restoreSystemCursor();setFollowSubject(null,false);document.body.classList.remove('round-active','paused','cursor-free');setRuleNotesOpen(false);document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;
+  latestRoundScore=success?calculateRoundScore():0;
   if(gameMode==='ranked'&&rankedRunState==='active') {
     if(success) {
-      latestRoundScore=calculateRoundScore();rankedTotalScore+=latestRoundScore;rankedTotalTimeMs+=Math.max(1,Math.round(roundElapsedTime*1000));rankedWrongGuesses+=attemptLimit-attempts;
+      rankedTotalScore+=latestRoundScore;rankedTotalTimeMs+=Math.max(1,Math.round(roundElapsedTime*1000));rankedWrongGuesses+=attemptLimit-attempts;
       if(rankedStageIndex===RANKED_SEQUENCE.length-1)rankedRunState='completed';
     } else {latestRoundScore=0;rankedRunState='failed';}
   }
@@ -1320,6 +1402,10 @@ function returnToStartScreen(){
 document.querySelector('#play-button')!.addEventListener('click',()=>gameMode==='ranked'?openRankIntro():requestStartRound());
 document.querySelector('#replay-button')!.addEventListener('click',handleReplay);
 document.querySelector('#result-home-button')!.addEventListener('click',returnToStartScreen);
+shareResultButton.addEventListener('click',()=>{const result=resultForSharing();if(result)openShareScreen(result,'result')});
+document.querySelector('#share-link-button')!.addEventListener('click',()=>void shareActiveResult());
+document.querySelector('#share-close-button')!.addEventListener('click',closeShareScreen);
+document.querySelector('#share-play-button')!.addEventListener('click',()=>{closeShareScreen();document.querySelector<HTMLButtonElement>('#play-button')!.focus()});
 participantButtons.forEach(button=>button.addEventListener('click',()=>{
   const count=Number(button.dataset.participantCount);
   if(count===6||count===9||count===12)setParticipantCount(count);
@@ -1381,6 +1467,7 @@ addEventListener('beforeunload',restoreSystemCursor);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode)camera.fov=innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 
 applyLanguage();
+const incomingSharedResult=parseSharedResult();if(incomingSharedResult)openShareScreen(incomingSharedResult,'link');
 const clock=new THREE.Clock(); let proximityTimer=0;
 function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const realDt=Math.min(clock.getDelta(),.05);if(playing){updateRoundClock();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundElapsedTime/60)).padStart(2,'0')}:${String(Math.floor(roundElapsedTime%60)).padStart(2,'0')}`;}if(playing&&!paused){const simulationDt=realDt*gameSpeed;simulationTime+=simulationDt;bellTimer-=simulationDt;bell.scale.lerp(new THREE.Vector3(1,1,1),simulationDt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,simulationDt));proximityTimer-=simulationDt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode&&followedSubject)applyMobileCamera();else if(!touchMode)updateCamera(realDt);updateTargeting();}renderer.render(scene,camera)}
 frame();
