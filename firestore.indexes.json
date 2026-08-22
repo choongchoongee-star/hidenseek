@@ -1,7 +1,7 @@
 {
   "indexes": [
     {
-      "collectionGroup": "rankedScores",
+      "collectionGroup": "rankedScoresThreeStage",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "score", "order": "DESCENDING" },

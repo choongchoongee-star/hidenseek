@@ -31,6 +31,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const db = getFirestore(app);
+const RANKED_SCORE_COLLECTION = 'rankedScoresThreeStage';
 
 export interface LeaderboardEntry {
   uid: string;
@@ -54,7 +55,7 @@ export async function submitBestScore(
   totalTimeMs: number,
   wrongGuesses: number,
 ) {
-  const scoreRef = doc(db, 'rankedScores', user.uid);
+  const scoreRef = doc(db, RANKED_SCORE_COLLECTION, user.uid);
   let improved = false;
 
   await runTransaction(db, async transaction => {
@@ -80,7 +81,7 @@ export async function submitBestScore(
 
 export async function loadLeaderboard() {
   const snapshot = await getDocs(query(
-    collection(db, 'rankedScores'),
+    collection(db, RANKED_SCORE_COLLECTION),
     orderBy('score', 'desc'),
     orderBy('totalTimeMs', 'asc'),
     limit(100),

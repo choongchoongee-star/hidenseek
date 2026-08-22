@@ -16,13 +16,13 @@ service cloud.firestore {
       ])
       && data.uid == request.auth.uid
       && validName(data.displayName)
-      && data.score is int && data.score >= 0 && data.score <= 100000
+      && data.score is int && data.score >= 0 && data.score <= 75000
       && data.totalTimeMs is int && data.totalTimeMs > 0 && data.totalTimeMs <= 86400000
-      && data.wrongGuesses is int && data.wrongGuesses >= 0 && data.wrongGuesses <= 8
+      && data.wrongGuesses is int && data.wrongGuesses >= 0 && data.wrongGuesses <= 3
       && data.completedAt == request.time;
     }
 
-    match /rankedScores/{uid} {
+    match /rankedScoresThreeStage/{uid} {
       allow read: if true;
       allow create: if signedIn()
         && uid == request.auth.uid

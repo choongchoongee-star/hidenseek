@@ -191,7 +191,7 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .leaderboard-link:hover { border-color: rgba(246,185,54,.55); color: var(--yellow); }
 .leaderboard-link b { font-size: 15px; font-weight: 500; }
 .participant-selector > span { display: block; margin-bottom: 9px; color: rgba(244,241,232,.48); font-size: 11px; }
-.participant-selector > div { display: grid; grid-template-columns: repeat(4,1fr); border-block: 1px solid rgba(244,241,232,.14); }
+.participant-selector > div { display: grid; grid-template-columns: repeat(3,1fr); border-block: 1px solid rgba(244,241,232,.14); }
 .participant-selector button { position: relative; min-height: 59px; border: 0; background: transparent; color: rgba(244,241,232,.5); font: 700 18px var(--font-ui); cursor: pointer; transition: color .18s; }
 .participant-selector button + button { border-left: 1px solid rgba(244,241,232,.1); }
 .participant-selector button::after { content: ''; position: absolute; right: 18%; bottom: -1px; left: 18%; height: 2px; background: transparent; transition: background .18s; }
@@ -244,7 +244,7 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .rank-intro-dialog .eyebrow { margin-bottom: 8px; }
 .rank-intro-dialog h2 { margin: 0; font: 700 clamp(40px,6vw,66px)/.95 var(--font-ui); letter-spacing: -.055em; text-wrap: balance; word-break: keep-all; }
 .rank-intro-dialog > p { margin: 18px 0; font-size: 13px; line-height: 1.65; word-break: keep-all; }
-.rank-route { display: grid; grid-template-columns: repeat(4,1fr); margin: 0 0 18px; padding: 0; border-block: 1px solid rgba(244,241,232,.18); list-style: none; }
+.rank-route { display: grid; grid-template-columns: repeat(3,1fr); margin: 0 0 18px; padding: 0; border-block: 1px solid rgba(244,241,232,.18); list-style: none; }
 .rank-route li { position: relative; display: grid; min-height: 58px; place-items: center; color: var(--yellow); font-size: 20px; font-weight: 700; }
 .rank-route li + li { border-left: 1px solid rgba(244,241,232,.12); }
 .rank-route li:not(:last-child)::after { content: '›'; position: absolute; right: -5px; color: rgba(244,241,232,.5); font-size: 18px; }

@@ -65,13 +65,13 @@ const RULES: RuleDefinition[] = [
   { id:'greetingWave', action:'wave', label:{ko:'마주보기 인사',en:'GREETING WAVE'}, note:{ko:'서로 마주봄 → 둘 다 손 흔들기',en:'Face each other → both WAVE'} },
   { id:'turnSpin', action:'spin', label:{ko:'방향 전환 회전',en:'TURN SPIN'}, note:{ko:'이동 목표 도착 → 회전',en:'Reach a waypoint → SPIN'} },
 ];
-const PARTICIPANT_OPTIONS = [6,9,12,24] as const;
-const RANKED_SEQUENCE = [6,9,12,24] as const;
+const PARTICIPANT_OPTIONS = [6,9,12] as const;
+const RANKED_SEQUENCE = [6,9,12] as const;
 const INITIAL_BELL_INTERVAL = [10.5,15] as const;
 const BELL_INTERVAL = [15,21] as const;
 const SPATIAL_RULE_IDS:SpatialRuleId[]=['centerSit','edgeJump','bellZoneKick','lampBow'];
 const SUBJECT_NAMES = ['영수','영호','영식','영철','광수','상철','민수','준호','태수','성훈','진우','동진','영숙','정숙','순자','영자','옥순','현숙','지영','수진','민지','혜진','은영','보람'];
-const ARENA_SIZES:Record<typeof PARTICIPANT_OPTIONS[number],number>={6:30,9:38,12:44,24:58};
+const ARENA_SIZES:Record<typeof PARTICIPANT_OPTIONS[number],number>={6:30,9:38,12:44};
 let RULE_NOTE_ORDER:RuleNoteId[]=[...RULES.slice(0,4).map(rule=>rule.id),'bell'];
 const ruleNoteMarks={} as Record<RuleNoteId,RuleNoteMark>;
 [...RULES.map(rule=>rule.id),'bell' as const].forEach(ruleId=>ruleNoteMarks[ruleId]=null);
@@ -797,7 +797,7 @@ function ruleCountForParticipants() {
 }
 
 function attemptLimitForParticipants(count:typeof PARTICIPANT_OPTIONS[number]=participantCount) {
-  return count===24?3:2;
+  return 2;
 }
 
 function chooseActiveRules() {
@@ -1228,7 +1228,8 @@ function updateResultCopy(){
   const success=roundResult==='success';
   const ranked=gameMode==='ranked'&&rankedRunState!=='idle';
   const resultKicker=document.querySelector<HTMLElement>('#result-kicker')!;
-  resultKicker.textContent=ranked?copy(`랭크 ${Math.min(rankedStageIndex+1,4)}/4`,`RANKED ${Math.min(rankedStageIndex+1,4)}/4`):(success?'':copy('관찰 종료','OBSERVATION TERMINATED'));
+  const rankedStageNumber=Math.min(rankedStageIndex+1,RANKED_SEQUENCE.length);
+  resultKicker.textContent=ranked?copy(`랭크 ${rankedStageNumber}/${RANKED_SEQUENCE.length}`,`RANKED ${rankedStageNumber}/${RANKED_SEQUENCE.length}`):(success?'':copy('관찰 종료','OBSERVATION TERMINATED'));
   resultKicker.hidden=!ranked&&success;
   const resultTitle=document.querySelector('#result-title')!;
   if(rankedRunState==='completed')resultTitle.textContent=copy('랭크 완주!','RANKED RUN COMPLETE!');
@@ -1321,7 +1322,7 @@ document.querySelector('#replay-button')!.addEventListener('click',handleReplay)
 document.querySelector('#result-home-button')!.addEventListener('click',returnToStartScreen);
 participantButtons.forEach(button=>button.addEventListener('click',()=>{
   const count=Number(button.dataset.participantCount);
-  if(count===6||count===9||count===12||count===24)setParticipantCount(count);
+  if(count===6||count===9||count===12)setParticipantCount(count);
 }));
 ruleNoteRows.forEach(row=>row.addEventListener('click',()=>cycleRuleNote(row.dataset.ruleNote as RuleNoteId)));
 document.querySelector('#rule-notes-close')!.addEventListener('click',()=>setRuleNotesOpen(false));
