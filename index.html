@@ -76,14 +76,10 @@
         <div class="game-mode-panel">
           <span data-ko="게임 모드" data-en="GAME MODE">게임 모드</span>
           <div class="game-mode-selector" role="radiogroup" aria-label="Game mode">
-            <button class="active" data-game-mode="casual" role="radio" aria-checked="true"><b data-ko="일반 게임" data-en="CASUAL">일반 게임</b><small data-ko="로그인 없이 플레이" data-en="PLAY WITHOUT LOGIN">로그인 없이 플레이</small></button>
-            <button data-game-mode="ranked" role="radio" aria-checked="false"><b data-ko="랭크 게임" data-en="RANKED">랭크 게임</b><small data-ko="Google 이름으로 공개 기록" data-en="PUBLIC RECORD WITH GOOGLE NAME">Google 이름으로 공개 기록</small></button>
+            <button class="active" data-game-mode="casual" role="radio" aria-checked="true"><b data-ko="일반 게임" data-en="CASUAL">일반 게임</b><small data-ko="원하는 난이도로 한 판" data-en="ONE ROUND AT ANY DIFFICULTY">원하는 난이도로 한 판</small></button>
+            <button data-game-mode="ranked" role="radio" aria-checked="false"><b data-ko="랭크 도전" data-en="RANKED RUN">랭크 도전</b><small data-ko="네 난이도를 연속 클리어" data-en="CLEAR ALL FOUR STAGES">네 난이도를 연속 클리어</small></button>
           </div>
-          <div id="account-status" class="account-status" aria-live="polite" hidden>
-            <span id="account-label"></span>
-            <button id="sign-out-button" hidden data-ko="로그아웃" data-en="SIGN OUT">로그아웃</button>
-          </div>
-          <button id="leaderboard-button" class="leaderboard-link"><span data-ko="클리어 랭킹" data-en="CLEAR LEADERBOARD">클리어 랭킹</span><b>↗</b></button>
+          <button id="leaderboard-button" class="leaderboard-link"><span data-ko="최고 점수" data-en="HIGH SCORES">최고 점수</span><b>↗</b></button>
         </div>
         <div class="participant-selector" role="radiogroup" aria-label="Number of participating subjects">
           <span data-ko="난이도 · 참가 인원" data-en="DIFFICULTY · PEOPLE">난이도 · 참가 인원</span>
@@ -94,6 +90,11 @@
             <button data-participant-count="24" role="radio" aria-checked="false">24 <small data-ko="극한 · 3회" data-en="EXTREME · 3 TRIES">극한 · 3회</small></button>
           </div>
         </div>
+        <div id="rank-sequence-summary" class="rank-sequence-summary" hidden>
+          <span data-ko="랭크 코스" data-en="RANKED COURSE">랭크 코스</span>
+          <b>6 → 9 → 12 → 24</b>
+          <small data-ko="모두 클리어해야 점수가 등록됩니다" data-en="CLEAR ALL STAGES TO SUBMIT A SCORE">모두 클리어해야 점수가 등록됩니다</small>
+        </div>
         <div class="rule-strip"><span id="subject-count-summary">참가자 6명</span><span id="rule-count-summary">정답 후보 2개</span><span id="attempt-count-summary">기회 2번</span></div>
         <button id="play-button" class="primary"><span data-ko="게임 시작" data-en="START GAME">게임 시작</span> <b>→</b></button>
       </section>
@@ -101,18 +102,30 @@
         <div class="leaderboard-dialog">
           <div class="leaderboard-heading">
             <div>
-              <h2 data-ko="클리어 랭킹" data-en="CLEAR LEADERBOARD">클리어 랭킹</h2>
+              <h2 data-ko="최고 점수" data-en="HIGH SCORES">최고 점수</h2>
             </div>
-            <button id="leaderboard-close" aria-label="클리어 랭킹 닫기">×</button>
+            <button id="leaderboard-close" aria-label="최고 점수 닫기">×</button>
           </div>
-          <div class="leaderboard-tabs" role="tablist" aria-label="Leaderboard difficulty">
-            <button class="active" data-leaderboard-difficulty="6" role="tab" aria-selected="true">6 <small data-ko="쉬움" data-en="EASY">쉬움</small></button>
-            <button data-leaderboard-difficulty="9" role="tab" aria-selected="false">9 <small data-ko="보통" data-en="MEDIUM">보통</small></button>
-            <button data-leaderboard-difficulty="12" role="tab" aria-selected="false">12 <small data-ko="어려움" data-en="HARD">어려움</small></button>
-            <button data-leaderboard-difficulty="24" role="tab" aria-selected="false">24 <small data-ko="극한" data-en="EXTREME">극한</small></button>
-          </div>
-          <div class="leaderboard-columns"><span data-ko="순위 · 플레이어" data-en="RANK · PLAYER">순위 · 플레이어</span><span data-ko="클리어 / 플레이" data-en="CLEARS / PLAYS">클리어 / 플레이</span></div>
+          <p class="leaderboard-course" data-ko="6 → 9 → 12 → 24 완주 최고 기록" data-en="BEST COMPLETE RUN: 6 → 9 → 12 → 24">6 → 9 → 12 → 24 완주 최고 기록</p>
+          <div class="leaderboard-columns"><span data-ko="순위 · 플레이어" data-en="RANK · PLAYER">순위 · 플레이어</span><span data-ko="점수" data-en="SCORE">점수</span></div>
           <div id="leaderboard-list" class="leaderboard-list" aria-live="polite"></div>
+        </div>
+      </section>
+      <section id="rank-intro-screen" class="screen rank-intro-screen" aria-hidden="true">
+        <div class="rank-intro-dialog">
+          <div class="eyebrow" data-ko="랭크 도전" data-en="RANKED RUN">랭크 도전</div>
+          <h2 data-ko="네 난이도를 모두 클리어하세요." data-en="CLEAR ALL FOUR STAGES.">네 난이도를 모두 클리어하세요.</h2>
+          <p data-ko="6명부터 24명까지 차례대로 이어집니다. 한 번이라도 실패하거나 중간에 나가면 기록은 등록되지 않습니다." data-en="Play from 6 to 24 NPCs in order. One failure or quitting the run means no score is submitted.">6명부터 24명까지 차례대로 이어집니다. 한 번이라도 실패하거나 중간에 나가면 기록은 등록되지 않습니다.</p>
+          <ol class="rank-route" aria-label="Ranked stage order"><li>6</li><li>9</li><li>12</li><li>24</li></ol>
+          <div class="rank-score-guide">
+            <span data-ko="라운드마다" data-en="EACH ROUND">라운드마다</span>
+            <b data-ko="클리어 + 시간 + 정확도" data-en="CLEAR + TIME + ACCURACY">클리어 + 시간 + 정확도</b>
+            <small data-ko="배속은 기록 시간을 빠르게 하지 않습니다 · 총점 최대 100,000" data-en="SPEED DOES NOT ACCELERATE THE SCORE CLOCK · 100,000 MAX">배속은 기록 시간을 빠르게 하지 않습니다 · 총점 최대 100,000</small>
+          </div>
+          <label class="rank-name-field"><span data-ko="랭킹 이름" data-en="LEADERBOARD NAME">랭킹 이름</span><input id="rank-name-input" type="text" minlength="2" maxlength="10" autocomplete="nickname" placeholder="2~10자" data-placeholder-ko="2~10자" data-placeholder-en="2–10 CHARACTERS" /></label>
+          <small id="rank-name-error" class="rank-name-error" aria-live="polite"></small>
+          <button id="rank-start-button" class="primary"><span data-ko="랭크 도전 시작" data-en="START RANKED RUN">랭크 도전 시작</span> <b>→</b></button>
+          <button id="rank-cancel-button" class="secondary" data-ko="돌아가기" data-en="BACK">돌아가기</button>
         </div>
       </section>
       <section id="rules-screen" class="screen rules-screen" aria-hidden="true">
@@ -208,6 +221,10 @@
         <div class="reveal">
           <div><span data-ko="정답 규칙" data-en="TARGET RULE">정답 규칙</span><b id="reveal-rule"></b></div>
           <div><span data-ko="홀로 다른 참가자" data-en="ODD NPC">홀로 다른 참가자</span><b id="reveal-npc"></b></div>
+        </div>
+        <div id="score-summary" class="score-summary" hidden>
+          <div><span data-ko="이번 라운드" data-en="THIS ROUND">이번 라운드</span><b id="round-score">0</b></div>
+          <div><span data-ko="누적 점수" data-en="RUN TOTAL">누적 점수</span><b id="total-score">0</b></div>
         </div>
         <p id="ranked-result-status" class="ranked-result-status" hidden></p>
         <button id="replay-button" class="primary"><span data-ko="다시 플레이" data-en="PLAY AGAIN">다시 플레이</span> <b>↻</b></button>

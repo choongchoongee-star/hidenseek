@@ -1,11 +1,11 @@
 {
   "indexes": [
     {
-      "collectionGroup": "rankedStats",
+      "collectionGroup": "rankedScores",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "difficulty", "order": "ASCENDING" },
-        { "fieldPath": "clears", "order": "DESCENDING" }
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "totalTimeMs", "order": "ASCENDING" }
       ]
     }
   ],

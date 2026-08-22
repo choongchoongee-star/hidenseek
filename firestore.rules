@@ -6,84 +6,46 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function validDifficulty(value) {
-      return value == 6 || value == 9 || value == 12 || value == 24;
-    }
-
     function validName(value) {
-      return value is string && value.size() >= 1 && value.size() <= 24;
+      return value is string && value.size() >= 2 && value.size() <= 10;
     }
 
-    function validStatsShape(data) {
+    function validScoreShape(data) {
       return data.keys().hasOnly([
-        'uid', 'displayName', 'difficulty', 'plays', 'clears',
-        'lastStartedMatchId', 'lastCompletedMatchId', 'updatedAt'
+        'uid', 'displayName', 'score', 'totalTimeMs', 'wrongGuesses', 'completedAt'
       ])
       && data.uid == request.auth.uid
       && validName(data.displayName)
-      && validDifficulty(data.difficulty)
-      && data.plays is int && data.plays >= 1
-      && data.clears is int && data.clears >= 0 && data.clears <= data.plays
-      && data.lastStartedMatchId is string
-      && data.lastCompletedMatchId is string
-      && data.updatedAt == request.time;
+      && data.score is int && data.score >= 0 && data.score <= 100000
+      && data.totalTimeMs is int && data.totalTimeMs > 0 && data.totalTimeMs <= 86400000
+      && data.wrongGuesses is int && data.wrongGuesses >= 0 && data.wrongGuesses <= 8
+      && data.completedAt == request.time;
     }
 
-    match /rankedMatches/{matchId} {
-      allow read: if signedIn() && resource.data.uid == request.auth.uid;
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['uid', 'difficulty', 'status', 'startedAt'])
-        && request.resource.data.uid == request.auth.uid
-        && validDifficulty(request.resource.data.difficulty)
-        && request.resource.data.status == 'active'
-        && request.resource.data.startedAt == request.time;
-      allow update: if signedIn()
-        && resource.data.uid == request.auth.uid
-        && resource.data.status == 'active'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'finishedAt'])
-        && request.resource.data.status in ['success', 'fail', 'abandoned']
-        && request.resource.data.finishedAt == request.time;
-      allow delete: if false;
-    }
-
-    match /rankedStats/{statsId} {
+    match /rankedScores/{uid} {
       allow read: if true;
       allow create: if signedIn()
-        && validStatsShape(request.resource.data)
-        && request.resource.data.plays == 1
-        && request.resource.data.clears == 0
-        && request.resource.data.lastCompletedMatchId == ''
-        && getAfter(/databases/$(database)/documents/rankedMatches/$(request.resource.data.lastStartedMatchId)).data.uid == request.auth.uid
-        && getAfter(/databases/$(database)/documents/rankedMatches/$(request.resource.data.lastStartedMatchId)).data.difficulty == request.resource.data.difficulty
-        && getAfter(/databases/$(database)/documents/rankedMatches/$(request.resource.data.lastStartedMatchId)).data.status == 'active';
+        && uid == request.auth.uid
+        && validScoreShape(request.resource.data);
       allow update: if signedIn()
+        && uid == request.auth.uid
         && resource.data.uid == request.auth.uid
-        && validStatsShape(request.resource.data)
+        && validScoreShape(request.resource.data)
         && request.resource.data.uid == resource.data.uid
-        && request.resource.data.difficulty == resource.data.difficulty
         && (
-          (
-            request.resource.data.plays == resource.data.plays + 1
-            && request.resource.data.clears == resource.data.clears
-            && request.resource.data.lastCompletedMatchId == resource.data.lastCompletedMatchId
-            && request.resource.data.lastStartedMatchId != resource.data.lastStartedMatchId
-            && getAfter(/databases/$(database)/documents/rankedMatches/$(request.resource.data.lastStartedMatchId)).data.uid == request.auth.uid
-            && getAfter(/databases/$(database)/documents/rankedMatches/$(request.resource.data.lastStartedMatchId)).data.difficulty == request.resource.data.difficulty
-            && getAfter(/databases/$(database)/documents/rankedMatches/$(request.resource.data.lastStartedMatchId)).data.status == 'active'
-          )
-          ||
-          (
-            request.resource.data.plays == resource.data.plays
-            && request.resource.data.clears == resource.data.clears + 1
-            && request.resource.data.lastStartedMatchId == resource.data.lastStartedMatchId
-            && request.resource.data.lastCompletedMatchId != resource.data.lastCompletedMatchId
-            && get(/databases/$(database)/documents/rankedMatches/$(request.resource.data.lastCompletedMatchId)).data.status == 'active'
-            && getAfter(/databases/$(database)/documents/rankedMatches/$(request.resource.data.lastCompletedMatchId)).data.uid == request.auth.uid
-            && getAfter(/databases/$(database)/documents/rankedMatches/$(request.resource.data.lastCompletedMatchId)).data.difficulty == request.resource.data.difficulty
-            && getAfter(/databases/$(database)/documents/rankedMatches/$(request.resource.data.lastCompletedMatchId)).data.status == 'success'
-          )
+          request.resource.data.score > resource.data.score
+          || (request.resource.data.score == resource.data.score
+            && request.resource.data.totalTimeMs < resource.data.totalTimeMs)
         );
       allow delete: if false;
+    }
+
+    match /rankedMatches/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /rankedStats/{document=**} {
+      allow read, write: if false;
     }
   }
 }

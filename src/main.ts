@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import './style.css';
-import { finishRankedMatch, loadLeaderboard, prepareAuth, signInWithGoogle, signOutUser, startRankedMatch, watchAuth } from './firebase';
+import { ensureAnonymousUser, loadLeaderboard, submitBestScore } from './firebase';
 import type { User } from 'firebase/auth';
-import type { LeaderboardEntry, RankedDifficulty, RankedResult } from './firebase';
+import type { LeaderboardEntry } from './firebase';
 
 type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow' | 'greetingWave' | 'turnSpin';
 type SpatialRuleId = 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow';
@@ -67,6 +67,7 @@ const RULES: RuleDefinition[] = [
   { id:'turnSpin', action:'spin', label:{ko:'방향 전환 회전',en:'TURN SPIN'}, note:{ko:'이동 목표 도착 → 회전',en:'Reach a waypoint → SPIN'} },
 ];
 const PARTICIPANT_OPTIONS = [6,9,12,24] as const;
+const RANKED_SEQUENCE = [6,9,12,24] as const;
 const INITIAL_BELL_INTERVAL = [10.5,15] as const;
 const BELL_INTERVAL = [15,21] as const;
 const SPATIAL_RULE_IDS:SpatialRuleId[]=['centerSit','edgeJump','bellZoneKick','lampBow'];
@@ -264,7 +265,11 @@ let suppressAccusationUntil = 0;
 let controlsOrigin: ControlsOrigin = 'start';
 let controlsAcknowledged = readControlsAcknowledged();
 let rulesDismissed = readRulesDismissed();
-let roundTime = 0;
+let roundElapsedTime = 0;
+let simulationTime = 0;
+let roundStartedAt = 0;
+let casualPausedMs = 0;
+let casualPauseStartedAt = 0;
 let bellTimer:number = INITIAL_BELL_INTERVAL[0];
 let gameSpeed:GameSpeed = 1;
 let yaw = 0;
@@ -318,25 +323,33 @@ const speedButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-game-
 const volumeSliders=[...document.querySelectorAll<HTMLInputElement>('.volume-slider')];
 const volumeOutputs=[...document.querySelectorAll<HTMLOutputElement>('.volume-control output')];
 const gameModeButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-game-mode]')];
-const accountLabel=document.querySelector<HTMLElement>('#account-label')!;
-const accountStatus=document.querySelector<HTMLElement>('#account-status')!;
-const signOutButton=document.querySelector<HTMLButtonElement>('#sign-out-button')!;
+const participantSelector=document.querySelector<HTMLElement>('.participant-selector')!;
+const rankSequenceSummary=document.querySelector<HTMLElement>('#rank-sequence-summary')!;
+const rankIntroScreen=document.querySelector<HTMLElement>('#rank-intro-screen')!;
+const rankNameInput=document.querySelector<HTMLInputElement>('#rank-name-input')!;
+const rankNameError=document.querySelector<HTMLElement>('#rank-name-error')!;
+const rankStartButton=document.querySelector<HTMLButtonElement>('#rank-start-button')!;
 const leaderboardScreen=document.querySelector<HTMLElement>('#leaderboard-screen')!;
 const leaderboardList=document.querySelector<HTMLElement>('#leaderboard-list')!;
-const leaderboardDifficultyButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-leaderboard-difficulty]')];
 const rankedResultStatus=document.querySelector<HTMLElement>('#ranked-result-status')!;
+const scoreSummary=document.querySelector<HTMLElement>('#score-summary')!;
+const roundScoreLabel=document.querySelector<HTMLElement>('#round-score')!;
+const totalScoreLabel=document.querySelector<HTMLElement>('#total-score')!;
 let gameMode:GameMode='casual';
 let authUser:User|null=null;
-let authReady=false;
 let authBusy=false;
 let roundStarting=false;
-let activeRankedMatchId:string|null=null;
-let activeRankedUser:User|null=null;
-let leaderboardDifficulty:RankedDifficulty=6;
 let leaderboardEntries:LeaderboardEntry[]=[];
 let leaderboardLoading=false;
 let leaderboardFailed=false;
-let rankedSaveState:'saving'|'saved'|'error'|null=null;
+let rankedSaveState:'saving'|'saved'|'unchanged'|'error'|null=null;
+let rankedRunState:'idle'|'active'|'completed'|'failed'='idle';
+let rankedStageIndex=0;
+let rankedTotalScore=0;
+let rankedTotalTimeMs=0;
+let rankedWrongGuesses=0;
+let latestRoundScore=0;
+let rankedNickname=readRankedNickname();
 
 function copy(ko:string,en:string){return language==='ko'?ko:en;}
 
@@ -357,6 +370,7 @@ function readSoundVolume() {
 function applyLanguage() {
   document.documentElement.lang=language;
   document.querySelectorAll<HTMLElement>('[data-ko][data-en]').forEach(element=>{element.textContent=element.dataset[language]??'';});
+  document.querySelectorAll<HTMLInputElement>('[data-placeholder-ko][data-placeholder-en]').forEach(element=>{element.placeholder=element.dataset[`placeholder${language==='ko'?'Ko':'En'}`]??'';});
   languageToggle.textContent=language==='ko'?'KR':'EN';
   languageToggle.setAttribute('aria-label',language==='ko'?'Switch to English':'한국어로 전환');
   mobilePauseButton.setAttribute('aria-label',copy('게임 일시정지','Pause game'));
@@ -371,15 +385,9 @@ function applyLanguage() {
   if(leaderboardScreen.classList.contains('open'))renderLeaderboard();
 }
 
-function readLastGameMode():GameMode {
-  try { return localStorage.getItem('the-odd-one-last-mode')==='ranked'?'ranked':'casual'; }
-  catch { return 'casual'; }
-}
-
-function rememberGameMode() {
-  if(!authUser)return;
-  try { localStorage.setItem('the-odd-one-last-mode',gameMode); }
-  catch { /* Mode persistence is optional for the current session. */ }
+function readRankedNickname() {
+  try { return (localStorage.getItem('the-odd-one-ranked-name')||'').slice(0,10); }
+  catch { return ''; }
 }
 
 function setGameMode(mode:GameMode) {
@@ -394,16 +402,15 @@ function updateGameModeUI() {
     button.setAttribute('aria-checked',String(selected));
     button.disabled=authBusy||roundStarting;
   });
-  accountStatus.hidden=!authBusy&&!authUser;
-  signOutButton.hidden=!authUser;
-  if(authBusy)accountLabel.textContent=copy('Google 로그인 창을 확인하세요','CHECK THE GOOGLE SIGN-IN WINDOW');
-  else if(authUser)accountLabel.textContent=copy(`${authUser.displayName||'플레이어'} · 로그인됨`,`${authUser.displayName||'PLAYER'} · SIGNED IN`);
-  else accountLabel.textContent='';
+  const ranked=gameMode==='ranked';
+  participantSelector.hidden=ranked;
+  rankSequenceSummary.hidden=!ranked;
+  document.body.classList.toggle('rank-mode',ranked);
   const playButton=document.querySelector<HTMLButtonElement>('#play-button')!;
-  playButton.disabled=roundStarting;
+  playButton.disabled=roundStarting||authBusy;
   const playLabel=playButton.querySelector('span')!;
-  if(roundStarting)playLabel.textContent=copy('랭크 기록 생성 중','CREATING RANKED MATCH');
-  else playLabel.textContent=copy('게임 시작','START GAME');
+  if(roundStarting||authBusy)playLabel.textContent=copy('랭크 준비 중','PREPARING RANKED RUN');
+  else playLabel.textContent=ranked?copy('랭크 도전','START RANKED RUN'):copy('게임 시작','START GAME');
 }
 
 function renderLeaderboard() {
@@ -419,21 +426,20 @@ function renderLeaderboard() {
   }
   let displayedRank=0;
   leaderboardEntries.forEach((entry,index)=>{
-    if(index===0||entry.clears!==leaderboardEntries[index-1].clears)displayedRank=index+1;
+    if(index===0||entry.score!==leaderboardEntries[index-1].score)displayedRank=index+1;
     const row=document.createElement('div');row.className='leaderboard-row';
     const player=document.createElement('div');player.className='leaderboard-player';
     const rank=document.createElement('span');rank.className='leaderboard-rank';rank.textContent=copy(`${displayedRank}위`,`#${displayedRank}`);
     const name=document.createElement('span');name.className='leaderboard-name';name.textContent=entry.displayName;
     const score=document.createElement('div');score.className='leaderboard-score';
-    const clears=document.createElement('b');clears.textContent=copy(`${entry.clears} 클리어`,`${entry.clears} CLEARS`);
-    const plays=document.createElement('span');plays.textContent=copy(`${entry.plays} 플레이`,`${entry.plays} PLAYS`);
-    player.append(rank,name);score.append(clears,plays);row.append(player,score);leaderboardList.append(row);
+    const points=document.createElement('b');points.textContent=entry.score.toLocaleString();
+    player.append(rank,name);score.append(points);row.append(player,score);leaderboardList.append(row);
   });
 }
 
 async function refreshLeaderboard() {
   leaderboardLoading=true;leaderboardFailed=false;renderLeaderboard();
-  try { leaderboardEntries=await loadLeaderboard(leaderboardDifficulty); }
+  try { leaderboardEntries=await loadLeaderboard(); }
   catch(error) { console.warn('Leaderboard could not be loaded.',error);leaderboardEntries=[];leaderboardFailed=true; }
   finally { leaderboardLoading=false;renderLeaderboard(); }
 }
@@ -448,41 +454,36 @@ function closeLeaderboard() {
   document.querySelector<HTMLButtonElement>('#leaderboard-button')!.focus();
 }
 
-function setLeaderboardDifficulty(difficulty:RankedDifficulty) {
-  leaderboardDifficulty=difficulty;
-  leaderboardDifficultyButtons.forEach(button=>{
-    const selected=Number(button.dataset.leaderboardDifficulty)===difficulty;
-    button.classList.toggle('active',selected);button.setAttribute('aria-selected',String(selected));
-  });
-  void refreshLeaderboard();
+function selectGameMode(mode:GameMode) {
+  setGameMode(mode);
 }
 
-async function selectGameMode(mode:GameMode) {
-  if(mode==='casual'){setGameMode('casual');return;}
-  if(authUser){setGameMode('ranked');return;}
-  if(!authReady||authBusy)return;
-  authBusy=true;updateGameModeUI();
-  try {
-    authUser=await signInWithGoogle();
-    setGameMode('ranked');
-  } catch(error) {
-    console.warn('Google sign-in was not completed.',error);
-    setGameMode('casual');
-    showToast(copy('로그인을 완료해야 랭크 게임을 시작할 수 있어요','SIGN IN TO START A RANKED GAME'),true,2200);
-  } finally {authBusy=false;updateGameModeUI();}
+function openRankIntro() {
+  rankNameInput.value=rankedNickname;
+  rankNameError.textContent='';
+  rankIntroScreen.classList.add('open');rankIntroScreen.setAttribute('aria-hidden','false');
+  setTimeout(()=>rankNameInput.focus(),0);
 }
 
-async function initializeAuth() {
+function closeRankIntro() {
+  rankIntroScreen.classList.remove('open');rankIntroScreen.setAttribute('aria-hidden','true');
+  document.querySelector<HTMLButtonElement>('#play-button')!.focus();
+}
+
+async function beginRankedRun() {
+  const nickname=rankNameInput.value.trim();
+  if(nickname.length<2||nickname.length>10){rankNameError.textContent=copy('닉네임을 2~10자로 입력해 주세요.','ENTER A NAME WITH 2–10 CHARACTERS.');rankNameInput.focus();return;}
+  authBusy=true;rankStartButton.disabled=true;updateGameModeUI();rankNameError.textContent='';
   try {
-    await prepareAuth();
-    watchAuth(user=>{
-      authUser=user;authReady=true;
-      setGameMode(user?readLastGameMode():'casual');
-    });
+    authUser=await ensureAnonymousUser();
+    rankedNickname=nickname;
+    try { localStorage.setItem('the-odd-one-ranked-name',nickname); } catch { /* Keep the name for this run only. */ }
+    rankedRunState='active';rankedStageIndex=0;rankedTotalScore=0;rankedTotalTimeMs=0;rankedWrongGuesses=0;latestRoundScore=0;rankedSaveState=null;
+    setParticipantCount(RANKED_SEQUENCE[0]);closeRankIntro();requestStartRound();
   } catch(error) {
-    console.warn('Firebase Auth could not be initialized.',error);
-    authReady=true;setGameMode('casual');
-  }
+    console.warn('Anonymous ranked session could not be prepared.',error);
+    rankNameError.textContent=copy('랭크 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.','COULD NOT START THE RANKED SESSION. TRY AGAIN.');
+  } finally {authBusy=false;rankStartButton.disabled=false;updateGameModeUI();}
 }
 
 function setGameSpeed(speed:GameSpeed) {
@@ -848,7 +849,7 @@ function configureRound() {
   });
   activeSubjects.forEach((subject,index)=>subject.root.position.set((index%columns-(columns-1)/2)*6.5,0,(Math.floor(index/columns)-(rows-1)/2)*7));
   validateRoundConfiguration();
-  attemptLimit=attemptLimitForParticipants();attempts=attemptLimit;roundTime=0;bellTimer=THREE.MathUtils.randFloat(INITIAL_BELL_INTERVAL[0],INITIAL_BELL_INTERVAL[1]);renderRuleNotes();updateAttempts();resetRuleNotes();
+  attemptLimit=attemptLimitForParticipants();attempts=attemptLimit;roundElapsedTime=0;simulationTime=0;roundStartedAt=performance.now();casualPausedMs=0;casualPauseStartedAt=0;bellTimer=THREE.MathUtils.randFloat(INITIAL_BELL_INTERVAL[0],INITIAL_BELL_INTERVAL[1]);renderRuleNotes();updateAttempts();resetRuleNotes();
 }
 
 function validateRoundConfiguration() {
@@ -904,7 +905,7 @@ function updateSubject(s:Subject,dt:number) {
   const moveFactor=s.action==='spin'?.18:s.action?.42:1;
   s.root.position.addScaledVector(dir,s.speed*dt*moveFactor);
   if(dir.lengthSq()) s.root.rotation.y=THREE.MathUtils.lerp(s.root.rotation.y,Math.atan2(dir.x,dir.z),Math.min(1,dt*4));
-  const gait=Math.sin(roundTime*s.speed*5+s.id)*.1*moveFactor;
+  const gait=Math.sin(simulationTime*s.speed*5+s.id)*.1*moveFactor;
   s.body.rotation.z=gait; s.leftArm.rotation.x=gait*2; s.rightArm.rotation.x=-gait*2;
   const inCenter=Math.hypot(s.root.position.x,s.root.position.z)<centerTriggerRadius;
   s.lastCenterInside=inCenter?(s.lastCenterInside||trigger(s,'centerSit')):false;
@@ -1109,11 +1110,22 @@ function showToast(message:string,bad=false,duration=1200){const el=document.que
 
 function setPaused(value:boolean) {
   if(!playing||paused===value)return;
+  const now=performance.now();
+  if(gameMode==='casual') {
+    if(value)casualPauseStartedAt=now;
+    else if(casualPauseStartedAt){casualPausedMs+=now-casualPauseStartedAt;casualPauseStartedAt=0;}
+  }
   paused=value;keys.clear();cancelTouchPointers();
   const screen=document.querySelector<HTMLElement>('#pause-screen')!;screen.classList.toggle('open',paused);screen.setAttribute('aria-hidden',String(!paused));
   document.body.classList.toggle('paused',paused);
   if(paused)restoreSystemCursor();
   if(!paused&&!touchMode)requestGamePointerLock();
+}
+
+function updateRoundClock(now=performance.now()) {
+  if(!roundStartedAt)return;
+  const currentPause=gameMode==='casual'&&paused&&casualPauseStartedAt?now-casualPauseStartedAt:0;
+  roundElapsedTime=Math.max(0,(now-roundStartedAt-casualPausedMs-currentPause)/1000);
 }
 
 function updateSoundButtons() {
@@ -1206,76 +1218,110 @@ function setAltCursorMode(value:boolean) {
   else if(playing&&!paused)requestGamePointerLock();
 }
 
-async function startRound(){
+function startRound(){
   if(roundStarting)return;
   roundStarting=true;updateGameModeUI();
-  try {
-    activeRankedMatchId=null;activeRankedUser=null;rankedSaveState=null;
-    if(gameMode==='ranked') {
-      if(!authUser)throw new Error('ranked-auth-required');
-      const rankedUser=authUser;
-      activeRankedMatchId=await startRankedMatch(rankedUser,participantCount);
-      activeRankedUser=rankedUser;
-    }
-    rememberGameMode();configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode)initializeMobileCamera();else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}
-  } catch(error) {
-    console.warn('Ranked match could not be started.',error);
-    activeRankedMatchId=null;activeRankedUser=null;
-    showToast(copy('랭크 기록을 만들지 못해 게임을 시작하지 않았습니다','RANKED RECORD FAILED, SO THE GAME DID NOT START'),true,3000);
-  } finally { roundStarting=false;updateGameModeUI(); }
+  configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode)initializeMobileCamera();else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}
+  roundStarting=false;updateGameModeUI();
+}
+
+function calculateRoundScore() {
+  const wrongGuesses=attemptLimit-attempts;
+  const timeBonus=Math.max(0,10000-Math.floor(roundElapsedTime)*50);
+  const accuracyBonus=wrongGuesses===0?5000:wrongGuesses===1?2000:0;
+  return 10000+timeBonus+accuracyBonus;
+}
+
+function formatRunTime(milliseconds:number) {
+  const seconds=Math.floor(milliseconds/1000);
+  return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 }
 
 function updateResultCopy(){
   const success=roundResult==='success';
+  const ranked=gameMode==='ranked'&&rankedRunState!=='idle';
   const resultKicker=document.querySelector<HTMLElement>('#result-kicker')!;
-  resultKicker.textContent=success?'':copy('관찰 종료','OBSERVATION TERMINATED');
-  resultKicker.hidden=success;
-  document.querySelector('#result-title')!.textContent=success?copy('찾았습니다.','YOU FOUND IT.'):copy('추리에 실패했습니다.','CASE FAILED.');
+  resultKicker.textContent=ranked?copy(`랭크 ${Math.min(rankedStageIndex+1,4)}/4`,`RANKED ${Math.min(rankedStageIndex+1,4)}/4`):(success?'':copy('관찰 종료','OBSERVATION TERMINATED'));
+  resultKicker.hidden=!ranked&&success;
+  const resultTitle=document.querySelector('#result-title')!;
+  if(rankedRunState==='completed')resultTitle.textContent=copy('랭크 완주!','RANKED RUN COMPLETE!');
+  else if(rankedRunState==='failed')resultTitle.textContent=copy('랭크 도전 실패','RANKED RUN FAILED');
+  else if(ranked&&success)resultTitle.textContent=copy(`${participantCount}명 클리어`,`CLEARED ${participantCount} NPCS`);
+  else resultTitle.textContent=success?copy('찾았습니다.','YOU FOUND IT.'):copy('추리에 실패했습니다.','CASE FAILED.');
   document.querySelector('#reveal-rule')!.textContent=targetRule.label[language];
   document.querySelector('#reveal-npc')!.textContent=subjects[oddId].name;
+  scoreSummary.hidden=!ranked;
+  if(ranked){roundScoreLabel.textContent=latestRoundScore.toLocaleString();totalScoreLabel.textContent=rankedTotalScore.toLocaleString();}
+  const replayLabel=document.querySelector<HTMLButtonElement>('#replay-button')!.querySelector('span')!;
+  if(rankedRunState==='active'&&success)replayLabel.textContent=copy(`다음: ${RANKED_SEQUENCE[rankedStageIndex+1]}명`,`NEXT: ${RANKED_SEQUENCE[rankedStageIndex+1]} NPCS`);
+  else if(rankedRunState==='completed'||rankedRunState==='failed')replayLabel.textContent=copy('처음부터 다시 도전','RETRY FROM THE START');
+  else replayLabel.textContent=copy('다시 플레이','PLAY AGAIN');
   updateRankedResultStatus();
 }
 
 function updateRankedResultStatus() {
-  rankedResultStatus.hidden=!rankedSaveState;
+  const ranked=gameMode==='ranked'&&rankedRunState!=='idle';
+  rankedResultStatus.hidden=!ranked;
   rankedResultStatus.className=`ranked-result-status${rankedSaveState?` ${rankedSaveState}`:''}`;
-  if(rankedSaveState==='saving')rankedResultStatus.textContent=copy('랭크 결과 저장 중…','SAVING RANKED RESULT…');
-  else if(rankedSaveState==='saved')rankedResultStatus.textContent=copy('랭크 결과가 저장되었습니다.','RANKED RESULT SAVED.');
+  if(!ranked)rankedResultStatus.textContent='';
+  else if(rankedSaveState==='saving')rankedResultStatus.textContent=copy('최고 점수를 저장하는 중…','SAVING HIGH SCORE…');
+  else if(rankedSaveState==='saved')rankedResultStatus.textContent=copy(`최고 점수 등록 완료 · ${formatRunTime(rankedTotalTimeMs)}`,`HIGH SCORE SAVED · ${formatRunTime(rankedTotalTimeMs)}`);
+  else if(rankedSaveState==='unchanged')rankedResultStatus.textContent=copy('완주 성공 · 기존 최고 점수를 유지했습니다.','RUN COMPLETE · YOUR BEST SCORE STANDS.');
   else if(rankedSaveState==='error')rankedResultStatus.textContent=copy('결과 저장에 실패했습니다. 네트워크를 확인해 주세요.','RESULT SAVE FAILED. CHECK YOUR CONNECTION.');
+  else if(rankedRunState==='failed')rankedResultStatus.textContent=copy('이번 도전은 등록되지 않습니다.','THIS RUN WILL NOT BE SUBMITTED.');
+  else if(rankedRunState==='active')rankedResultStatus.textContent=copy(`다음 단계 ${RANKED_SEQUENCE[rankedStageIndex+1]}명`,`NEXT STAGE: ${RANKED_SEQUENCE[rankedStageIndex+1]} NPCS`);
   else rankedResultStatus.textContent='';
 }
 
-async function finishActiveRankedRound(result:RankedResult) {
-  const matchId=activeRankedMatchId;const user=activeRankedUser;
-  if(!matchId||!user)return;
-  activeRankedMatchId=null;activeRankedUser=null;
-  if(result!=='abandoned'){rankedSaveState='saving';updateRankedResultStatus();}
+async function saveCompletedRankedRun() {
+  if(!authUser)return;
+  rankedSaveState='saving';updateRankedResultStatus();
   try {
-    await finishRankedMatch(user,matchId,result);
-    if(result!=='abandoned'){rankedSaveState='saved';updateRankedResultStatus();}
+    const improved=await submitBestScore(authUser,rankedNickname,rankedTotalScore,rankedTotalTimeMs,rankedWrongGuesses);
+    rankedSaveState=improved?'saved':'unchanged';updateRankedResultStatus();
   } catch(error) {
-    console.warn('Ranked result could not be saved.',error);
-    if(result!=='abandoned'){rankedSaveState='error';updateRankedResultStatus();}
+    console.warn('Ranked high score could not be saved.',error);
+    rankedSaveState='error';updateRankedResultStatus();
   }
 }
 
-function endRound(success:boolean){playing=false;paused=false;roundResult=success?'success':'fail';restoreSystemCursor();setFollowSubject(null,false);document.body.classList.remove('round-active','paused','cursor-free');setRuleNotesOpen(false);document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;if(activeRankedMatchId){rankedSaveState='saving';void finishActiveRankedRound(success?'success':'fail')}updateResultCopy()}
+function endRound(success:boolean){
+  updateRoundClock();playing=false;paused=false;roundResult=success?'success':'fail';restoreSystemCursor();setFollowSubject(null,false);document.body.classList.remove('round-active','paused','cursor-free');setRuleNotesOpen(false);document.querySelector('#pause-screen')!.classList.remove('open');cancelTouchPointers();selectSubject(null);subjects[oddId].marker.material.color.set(0xf4b942);subjects[oddId].marker.material.opacity=1;
+  if(gameMode==='ranked'&&rankedRunState==='active') {
+    if(success) {
+      latestRoundScore=calculateRoundScore();rankedTotalScore+=latestRoundScore;rankedTotalTimeMs+=Math.max(1,Math.round(roundElapsedTime*1000));rankedWrongGuesses+=attemptLimit-attempts;
+      if(rankedStageIndex===RANKED_SEQUENCE.length-1){rankedRunState='completed';void saveCompletedRankedRun();}
+    } else {latestRoundScore=0;rankedRunState='failed';}
+  }
+  const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;updateResultCopy();
+}
+
+function resetRankedRun() {
+  rankedRunState='active';rankedStageIndex=0;rankedTotalScore=0;rankedTotalTimeMs=0;rankedWrongGuesses=0;latestRoundScore=0;rankedSaveState=null;setParticipantCount(RANKED_SEQUENCE[0]);
+}
+
+function handleReplay() {
+  if(gameMode!=='ranked'){requestStartRound();return;}
+  if(rankedRunState==='active'&&roundResult==='success') {rankedStageIndex++;setParticipantCount(RANKED_SEQUENCE[rankedStageIndex]);startRound();return;}
+  resetRankedRun();requestStartRound();
+}
 
 function returnToStartScreen(){
-  if(activeRankedMatchId)void finishActiveRankedRound('abandoned');
+  if(gameMode==='ranked'&&rankedRunState==='active')rankedRunState='failed';
   playing=false;paused=false;roundResult=null;restoreSystemCursor();cancelTouchPointers();setFollowSubject(null,false);selectSubject(null);
   subjects.forEach(subject=>subject.marker.material.opacity=0);
   document.querySelector('#crosshair')!.classList.remove('locked');const targetLabel=document.querySelector<HTMLElement>('#target-label')!;targetLabel.textContent='';targetLabel.classList.remove('show');
   document.body.classList.remove('round-active','paused','selection-active','cursor-free');
   setRuleNotesOpen(false);
   document.querySelector('#pause-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.setAttribute('aria-hidden','true');
-  document.querySelector('#end-screen')!.classList.remove('open');controlsScreen.classList.remove('open');controlsScreen.setAttribute('aria-hidden','true');rulesScreen.classList.remove('open');rulesScreen.setAttribute('aria-hidden','true');
+  document.querySelector('#end-screen')!.classList.remove('open');controlsScreen.classList.remove('open');controlsScreen.setAttribute('aria-hidden','true');rulesScreen.classList.remove('open');rulesScreen.setAttribute('aria-hidden','true');rankIntroScreen.classList.remove('open');rankIntroScreen.setAttribute('aria-hidden','true');
   document.querySelector('#start-screen')!.classList.add('open');
+  rankedRunState='idle';rankedSaveState=null;scoreSummary.hidden=true;
   clearTimeout(toastTimeout);document.querySelector('#toast')!.className='toast';
 }
 
-document.querySelector('#play-button')!.addEventListener('click',requestStartRound);
-document.querySelector('#replay-button')!.addEventListener('click',requestStartRound);
+document.querySelector('#play-button')!.addEventListener('click',()=>gameMode==='ranked'?openRankIntro():requestStartRound());
+document.querySelector('#replay-button')!.addEventListener('click',handleReplay);
 document.querySelector('#result-home-button')!.addEventListener('click',returnToStartScreen);
 participantButtons.forEach(button=>button.addEventListener('click',()=>{
   const count=Number(button.dataset.participantCount);
@@ -1311,13 +1357,11 @@ speedButtons.forEach(button=>button.addEventListener('click',()=>{
   if(speed===1||speed===1.5||speed===2)setGameSpeed(speed);
 }));
 gameModeButtons.forEach(button=>button.addEventListener('click',()=>selectGameMode(button.dataset.gameMode as GameMode)));
-signOutButton.addEventListener('click',async()=>{await signOutUser();setGameMode('casual');});
+rankStartButton.addEventListener('click',beginRankedRun);
+document.querySelector('#rank-cancel-button')!.addEventListener('click',closeRankIntro);
+rankNameInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();void beginRankedRun();}});
 document.querySelector('#leaderboard-button')!.addEventListener('click',openLeaderboard);
 document.querySelector('#leaderboard-close')!.addEventListener('click',closeLeaderboard);
-leaderboardDifficultyButtons.forEach(button=>button.addEventListener('click',()=>{
-  const difficulty=Number(button.dataset.leaderboardDifficulty);
-  if(difficulty===6||difficulty===9||difficulty===12||difficulty===24)setLeaderboardDifficulty(difficulty);
-}));
 addEventListener('mousemove',e=>{if(document.pointerLockElement!==canvas)return;if(followedSubject){desktopFollowSpherical.theta-=e.movementX*.0028;desktopFollowSpherical.phi=THREE.MathUtils.clamp(desktopFollowSpherical.phi-e.movementY*.0028,.35,1.4);applyDesktopFollowCamera();return}yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);camera.rotation.set(pitch,yaw,0)});
 addEventListener('keydown',e=>{if(leaderboardScreen.classList.contains('open')){if(e.code==='Escape'){e.preventDefault();closeLeaderboard()}return}if(rulesScreen.classList.contains('open')){if(e.code==='Escape')e.preventDefault();return}if(controlsScreen.classList.contains('open')){e.preventDefault();if(e.code==='Escape'&&controlsOrigin==='pause')closeControls();return}if((e.code==='AltLeft'||e.code==='AltRight')&&playing&&!paused&&!touchMode){e.preventDefault();if(!e.repeat)setAltCursorMode(!altCursorMode);return}if(e.code==='Escape'&&playing){e.preventDefault();if(paused)setPaused(false);else if(touchMode||document.pointerLockElement!==canvas)setPaused(true);return}const noteIndex=['Digit1','Digit2','Digit3','Digit4'].indexOf(e.code);if(noteIndex>=0&&noteIndex<activeRules.length&&playing&&!paused&&!e.repeat){e.preventDefault();cycleRuleNote(RULE_NOTE_ORDER[noteIndex]);return}if((e.code==='PageUp'||e.code==='PageDown')&&playing&&!paused&&!touchMode){e.preventDefault();adjustDesktopZoom(e.code==='PageUp'?-1:1);return}if(e.code==='KeyF'&&playing&&!paused&&!touchMode&&!e.repeat){e.preventDefault();toggleFollow(hovered||followedSubject);return}if(!paused)keys.add(e.code)});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('wheel',e=>{if(!touchMode&&playing&&!paused){e.preventDefault();adjustDesktopZoom(Math.sign(e.deltaY))}},{passive:false});
@@ -1339,7 +1383,6 @@ addEventListener('beforeunload',restoreSystemCursor);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode)camera.fov=innerHeight>innerWidth?72:62;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(touchMode)applyMobileCamera()});
 
 applyLanguage();
-void initializeAuth();
 const clock=new THREE.Clock(); let proximityTimer=0;
-function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const realDt=Math.min(clock.getDelta(),.05);if(playing&&!paused){const simulationDt=realDt*gameSpeed;roundTime+=simulationDt;bellTimer-=simulationDt;bell.scale.lerp(new THREE.Vector3(1,1,1),simulationDt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,simulationDt));proximityTimer-=simulationDt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode&&followedSubject)applyMobileCamera();else if(!touchMode)updateCamera(realDt);updateTargeting();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundTime/60)).padStart(2,'0')}:${String(Math.floor(roundTime%60)).padStart(2,'0')}`;}renderer.render(scene,camera)}
+function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const realDt=Math.min(clock.getDelta(),.05);if(playing){updateRoundClock();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundElapsedTime/60)).padStart(2,'0')}:${String(Math.floor(roundElapsedTime%60)).padStart(2,'0')}`;}if(playing&&!paused){const simulationDt=realDt*gameSpeed;simulationTime+=simulationDt;bellTimer-=simulationDt;bell.scale.lerp(new THREE.Vector3(1,1,1),simulationDt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,simulationDt));proximityTimer-=simulationDt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode&&followedSubject)applyMobileCamera();else if(!touchMode)updateCamera(realDt);updateTargeting();}renderer.render(scene,camera)}
 frame();
