@@ -78,7 +78,7 @@ const RULES: RuleDefinition[] = [
   { id:'edgeStar', action:'star', label:{ko:'가장자리 별 자세',en:'EDGE STAR'}, note:{ko:'맵 가장자리 진입 → 별 자세',en:'Enter the map edge → STAR POSE'} },
   { id:'bellZoneSideKick', action:'sideKick', label:{ko:'종탑 옆차기',en:'BELL TOWER SIDE KICK'}, note:{ko:'종탑 근처 진입 → 옆차기',en:'Approach the bell tower → SIDE KICK'} },
   { id:'lampSideStep', action:'sideStep', label:{ko:'조명 스텝',en:'LAMP SIDE-STEP'}, note:{ko:'모서리 조명 근처 → 좌우 스텝',en:'Approach a corner lamp → SIDE-STEP'} },
-  { id:'greetingWave', action:'wave', label:{ko:'마주보기 인사',en:'GREETING WAVE'}, note:{ko:'서로 마주봄 → 둘 다 손 흔들기',en:'Face each other → both WAVE'} },
+  { id:'greetingWave', action:'wave', label:{ko:'마주보기 인사',en:'GREETING WAVE'}, note:{ko:'다른 NPC와 서로 마주봄 → 손 흔들기',en:'Face another NPC → WAVE'} },
   { id:'turnSpin', action:'spin', label:{ko:'방향 전환 회전',en:'TURN SPIN'}, note:{ko:'이동 목표 도착 → 회전',en:'Reach a waypoint → SPIN'} },
 ];
 const PARTICIPANT_OPTIONS = [6,9,12] as const;
@@ -383,6 +383,8 @@ let rankedWrongGuesses=0;
 let latestRoundScore=0;
 let rankedNickname=readRankedNickname();
 let activeShareResult:SharedResult|null=null;
+let completedRoundShareResult:SharedResult|null=null;
+let rankedSaveRequestId=0;
 
 function copy(ko:string,en:string){return language==='ko'?ko:en;}
 
@@ -692,7 +694,7 @@ function setParticipantCount(count:typeof PARTICIPANT_OPTIONS[number]) {
   participantCount=count;
   const ruleCount=ruleCountForParticipants();
   attemptLimit=attemptLimitForParticipants(count);
-  if(!playing)attempts=attemptLimit;
+  if(!playing&&roundResult===null)attempts=attemptLimit;
   subjectCountSummary.textContent=copy(`참가자 ${count}명`,`${count} NPCS`);
   ruleCountSummary.textContent=copy(`정답 후보 ${ruleCount}개`,`${ruleCount} TARGET RULES`);
   attemptCountSummary.textContent=copy(`기회 ${attemptLimit}번`,`${attemptLimit} CHANCES`);
@@ -1013,7 +1015,14 @@ function validateRoundConfiguration() {
   if(Math.abs(bellObeyCount-participantCount/2)>.5)throw new Error('Bell noise must split subjects as evenly as possible.');
 }
 
-function shuffle<T>(items:T[]) { return [...items].sort(()=>Math.random()-.5); }
+function shuffle<T>(items:T[]) {
+  const shuffled=[...items];
+  for(let index=shuffled.length-1;index>0;index--) {
+    const swapIndex=Math.floor(Math.random()*(index+1));
+    [shuffled[index],shuffled[swapIndex]]=[shuffled[swapIndex],shuffled[index]];
+  }
+  return shuffled;
+}
 
 function trigger(subject:Subject, ruleId:RuleId) {
   if(!activeRuleIds.has(ruleId))return true;
@@ -1411,7 +1420,7 @@ function setAltCursorMode(value:boolean) {
 function startRound(){
   if(roundStarting)return;
   roundStarting=true;updateGameModeUI();
-  configureRound();playing=true;paused=false;roundResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode)initializeMobileCamera();else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}
+  configureRound();playing=true;paused=false;roundResult=null;completedRoundShareResult=null;pointerLockAcquired=false;altCursorMode=false;setSystemCursorOverride(false);setFollowSubject(null,false);document.body.classList.add('round-active');document.body.classList.remove('paused','cursor-free');selectSubject(null);document.querySelector('#start-screen')!.classList.remove('open');document.querySelector('#end-screen')!.classList.remove('open');document.querySelector('#pause-screen')!.classList.remove('open');if(touchMode)initializeMobileCamera();else{camera.fov=62;camera.updateProjectionMatrix();desktopCameraHeight=Math.max(8,arenaSize*.22);camera.position.set(0,desktopCameraHeight,arenaHalf*.82);yaw=0;pitch=-.28;desktopFreePosition.copy(camera.position);desktopFreeYaw=yaw;desktopFreePitch=pitch;camera.rotation.set(pitch,yaw,0);requestGamePointerLock()}
   roundStarting=false;updateGameModeUI();
 }
 
@@ -1428,12 +1437,7 @@ function formatRunTime(milliseconds:number) {
 }
 
 function resultForSharing():SharedResult|null {
-  if(roundResult!=='success')return null;
-  if(gameMode==='ranked') {
-    if(rankedRunState!=='completed')return null;
-    return {mode:'ranked',score:rankedTotalScore,participants:12,timeMs:rankedTotalTimeMs,wrongGuesses:rankedWrongGuesses};
-  }
-  return {mode:'casual',score:latestRoundScore,participants:participantCount,timeMs:Math.max(1,Math.round(roundElapsedTime*1000)),wrongGuesses:attemptLimit-attempts};
+  return completedRoundShareResult?{...completedRoundShareResult}:null;
 }
 
 function buildShareUrl(result:SharedResult) {
@@ -1542,17 +1546,24 @@ async function saveCompletedRankedRun() {
   if(rankedRunState!=='completed'||rankedSaveState==='saving'||rankedSaveState==='saved'||rankedSaveState==='unchanged')return;
   const nickname=rankNameInput.value.trim();
   if(nickname.length<2||nickname.length>10){rankNameError.textContent=copy('닉네임을 2~10자로 입력해 주세요.','ENTER A NAME WITH 2–10 CHARACTERS.');rankNameInput.focus();return;}
+  const requestId=++rankedSaveRequestId;
+  const submission={score:rankedTotalScore,timeMs:rankedTotalTimeMs,wrongGuesses:rankedWrongGuesses};
   authBusy=true;rankedSaveState='saving';rankNameError.textContent='';rankSubmitButton.disabled=true;updateResultCopy();
   try {
     const user=await ensureAnonymousUser();
+    if(requestId!==rankedSaveRequestId)return;
     rankedNickname=nickname;
     try { localStorage.setItem('the-odd-one-ranked-name',nickname); } catch { /* Keep the name for this session only. */ }
-    const improved=await submitBestScore(user,nickname,rankedTotalScore,rankedTotalTimeMs,rankedWrongGuesses);
+    const improved=await submitBestScore(user,nickname,submission.score,submission.timeMs,submission.wrongGuesses);
+    if(requestId!==rankedSaveRequestId)return;
     rankedSaveState=improved?'saved':'unchanged';updateResultCopy();
   } catch(error) {
+    if(requestId!==rankedSaveRequestId)return;
     console.warn('Ranked high score could not be saved.',error);
     rankedSaveState='error';rankNameError.textContent=copy('기록 등록에 실패했습니다. 다시 시도해 주세요.','COULD NOT SUBMIT THE SCORE. TRY AGAIN.');updateResultCopy();
-  } finally {authBusy=false;rankSubmitButton.disabled=false;updateGameModeUI();}
+  } finally {
+    if(requestId===rankedSaveRequestId){authBusy=false;rankSubmitButton.disabled=false;updateGameModeUI();}
+  }
 }
 
 function endRound(success:boolean){
@@ -1564,10 +1575,16 @@ function endRound(success:boolean){
       if(rankedStageIndex===RANKED_SEQUENCE.length-1)rankedRunState='completed';
     } else {latestRoundScore=0;rankedRunState='failed';}
   }
+  completedRoundShareResult=success&&gameMode==='casual'
+    ?{mode:'casual',score:latestRoundScore,participants:participantCount,timeMs:Math.max(1,Math.round(roundElapsedTime*1000)),wrongGuesses:attemptLimit-attempts}
+    :success&&rankedRunState==='completed'
+      ?{mode:'ranked',score:rankedTotalScore,participants:12,timeMs:rankedTotalTimeMs,wrongGuesses:rankedWrongGuesses}
+      :null;
   const screen=document.querySelector('#end-screen')!;screen.className=`screen result-screen open ${success?'success':'fail'}`;updateResultCopy();
 }
 
 function resetRankedRun() {
+  rankedSaveRequestId++;authBusy=false;rankSubmitButton.disabled=false;
   rankedRunState='active';rankedStageIndex=0;rankedTotalScore=0;rankedTotalTimeMs=0;rankedWrongGuesses=0;latestRoundScore=0;rankedSaveState=null;rankNameError.textContent='';rankSubmitPanel.hidden=true;setParticipantCount(RANKED_SEQUENCE[0]);
 }
 
@@ -1579,7 +1596,7 @@ function handleReplay() {
 
 function returnToStartScreen(){
   if(gameMode==='ranked'&&rankedRunState==='active')rankedRunState='failed';
-  playing=false;paused=false;roundResult=null;restoreSystemCursor();cancelTouchPointers();setFollowSubject(null,false);selectSubject(null);
+  rankedSaveRequestId++;authBusy=false;rankSubmitButton.disabled=false;playing=false;paused=false;roundResult=null;completedRoundShareResult=null;restoreSystemCursor();cancelTouchPointers();setFollowSubject(null,false);selectSubject(null);
   subjects.forEach(subject=>subject.marker.material.opacity=0);
   document.querySelector('#crosshair')!.classList.remove('locked');const targetLabel=document.querySelector<HTMLElement>('#target-label')!;targetLabel.textContent='';targetLabel.classList.remove('show');
   document.body.classList.remove('round-active','paused','selection-active','cursor-free');
