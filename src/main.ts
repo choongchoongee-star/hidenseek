@@ -3,10 +3,10 @@ import './style.css';
 import { ensureAnonymousUser, loadLeaderboard, submitBestScore } from './firebase';
 import type { LeaderboardEntry } from './firebase';
 
-type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow' | 'greetingWave' | 'turnSpin';
-type SpatialRuleId = 'centerSit' | 'edgeJump' | 'bellZoneKick' | 'lampBow';
+type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'centerCrouch' | 'edgeStar' | 'bellZoneSideKick' | 'lampSideStep' | 'greetingWave' | 'turnSpin';
+type SpatialRuleId = 'centerCrouch' | 'edgeStar' | 'bellZoneSideKick' | 'lampSideStep';
 type RuleNoteId = RuleId | 'bell';
-type ActionName = 'jump' | 'wave' | 'spin' | 'bow' | 'sit' | 'kick';
+type ActionName = 'jump' | 'wave' | 'spin' | 'bow' | 'crouch' | 'sideKick' | 'sideStep' | 'star';
 type SubjectMark = '?' | '✓' | null;
 type RuleNoteMark = '?' | '✓' | 'strike' | null;
 type ControlsOrigin = 'start' | 'pause';
@@ -59,10 +59,10 @@ const RULES: RuleDefinition[] = [
   { id:'blueSpin', action:'spin', stimulus:'blue', label:{ko:'파랑 회전',en:'BLUE SPIN'}, note:{ko:'파란 옷 근처 → 회전',en:'Near a blue shirt → SPIN'} },
   { id:'yellowWave', action:'wave', stimulus:'yellow', label:{ko:'노랑 인사',en:'YELLOW WAVE'}, note:{ko:'노란 옷 근처 → 손 흔들기',en:'Near a yellow shirt → WAVE'} },
   { id:'hatBow', action:'bow', stimulus:'hat', label:{ko:'모자에게 인사',en:'HAT BOW'}, note:{ko:'모자 쓴 사람 근처 → 허리 숙이기',en:'Near a hat → BOW'} },
-  { id:'centerSit', action:'sit', label:{ko:'중앙 앉기',en:'CENTER SIT'}, note:{ko:'중앙 구역 진입 → 앉기',en:'Enter the center → SIT'} },
-  { id:'edgeJump', action:'jump', label:{ko:'가장자리 점프',en:'EDGE JUMP'}, note:{ko:'맵 가장자리 진입 → 점프',en:'Enter the map edge → JUMP'} },
-  { id:'bellZoneKick', action:'kick', label:{ko:'종탑 발차기',en:'BELL TOWER KICK'}, note:{ko:'종탑 근처 진입 → 발차기',en:'Approach the bell tower → KICK'} },
-  { id:'lampBow', action:'bow', label:{ko:'조명에게 인사',en:'LAMP BOW'}, note:{ko:'모서리 조명 근처 → 허리 숙이기',en:'Approach a corner lamp → BOW'} },
+  { id:'centerCrouch', action:'crouch', label:{ko:'중앙 쪼그리기',en:'CENTER CROUCH'}, note:{ko:'중앙 구역 진입 → 쪼그려 앉기',en:'Enter the center → CROUCH'} },
+  { id:'edgeStar', action:'star', label:{ko:'가장자리 별 자세',en:'EDGE STAR'}, note:{ko:'맵 가장자리 진입 → 별 자세',en:'Enter the map edge → STAR POSE'} },
+  { id:'bellZoneSideKick', action:'sideKick', label:{ko:'종탑 옆차기',en:'BELL TOWER SIDE KICK'}, note:{ko:'종탑 근처 진입 → 옆차기',en:'Approach the bell tower → SIDE KICK'} },
+  { id:'lampSideStep', action:'sideStep', label:{ko:'조명 스텝',en:'LAMP SIDE-STEP'}, note:{ko:'모서리 조명 근처 → 좌우 스텝',en:'Approach a corner lamp → SIDE-STEP'} },
   { id:'greetingWave', action:'wave', label:{ko:'마주보기 인사',en:'GREETING WAVE'}, note:{ko:'서로 마주봄 → 둘 다 손 흔들기',en:'Face each other → both WAVE'} },
   { id:'turnSpin', action:'spin', label:{ko:'방향 전환 회전',en:'TURN SPIN'}, note:{ko:'이동 목표 도착 → 회전',en:'Reach a waypoint → SPIN'} },
 ];
@@ -70,13 +70,13 @@ const PARTICIPANT_OPTIONS = [6,9,12] as const;
 const RANKED_SEQUENCE = [6,9,12] as const;
 const INITIAL_BELL_INTERVAL = [10.5,15] as const;
 const BELL_INTERVAL = [15,21] as const;
-const SPATIAL_RULE_IDS:SpatialRuleId[]=['centerSit','edgeJump','bellZoneKick','lampBow'];
+const SPATIAL_RULE_IDS:SpatialRuleId[]=['centerCrouch','edgeStar','bellZoneSideKick','lampSideStep'];
 const SUBJECT_NAMES = ['영수','영호','영식','영철','광수','상철','민수','준호','태수','성훈','진우','동진','영숙','정숙','순자','영자','옥순','현숙','지영','수진','민지','혜진','은영','보람'];
 const ARENA_SIZES:Record<typeof PARTICIPANT_OPTIONS[number],number>={6:30,9:38,12:44};
 let RULE_NOTE_ORDER:RuleNoteId[]=[...RULES.slice(0,4).map(rule=>rule.id),'bell'];
 const ruleNoteMarks={} as Record<RuleNoteId,RuleNoteMark>;
 [...RULES.map(rule=>rule.id),'bell' as const].forEach(ruleId=>ruleNoteMarks[ruleId]=null);
-const ACTION_LABELS:Record<ActionName,LocalizedCopy>={jump:{ko:'점프',en:'JUMP'},wave:{ko:'손 흔들기',en:'WAVE'},spin:{ko:'회전',en:'SPIN'},bow:{ko:'허리 숙이기',en:'BOW'},sit:{ko:'앉기',en:'SIT'},kick:{ko:'발차기',en:'KICK'}};
+const ACTION_LABELS:Record<ActionName,LocalizedCopy>={jump:{ko:'점프',en:'JUMP'},wave:{ko:'손 흔들기',en:'WAVE'},spin:{ko:'회전',en:'SPIN'},bow:{ko:'허리 숙이기',en:'BOW'},crouch:{ko:'쪼그려 앉기',en:'CROUCH'},sideKick:{ko:'옆차기',en:'SIDE KICK'},sideStep:{ko:'좌우 스텝',en:'SIDE-STEP'},star:{ko:'별 자세',en:'STAR POSE'}};
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const touchMode = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).has('touch');
@@ -745,16 +745,16 @@ function randomWaypoint(out: THREE.Vector3) {
 }
 
 function landmarkWaypoint(ruleId:SpatialRuleId,out:THREE.Vector3) {
-  if(ruleId==='centerSit') {
+  if(ruleId==='centerCrouch') {
     const angle=Math.random()*Math.PI*2,radius=Math.random()*centerTriggerRadius*.45;
     out.set(Math.cos(angle)*radius,0,Math.sin(angle)*radius);return;
   }
-  if(ruleId==='edgeJump') {
+  if(ruleId==='edgeStar') {
     const edge=arenaHalf*.74,tangent=THREE.MathUtils.randFloat(-arenaHalf*.48,arenaHalf*.48);
     const side=Math.floor(Math.random()*4);
     out.set(side<2?(side===0?-edge:edge):tangent,0,side<2?tangent:(side===2?-edge:edge));return;
   }
-  if(ruleId==='bellZoneKick') {
+  if(ruleId==='bellZoneSideKick') {
     const radius=Math.max(2.8,5*arenaScale),bellZ=-25*arenaScale;
     out.set(THREE.MathUtils.randFloat(-radius*.42,radius*.42),0,bellZ+radius*THREE.MathUtils.randFloat(.32,.5));return;
   }
@@ -873,7 +873,7 @@ function trigger(subject:Subject, ruleId:RuleId) {
   if(!activeRuleIds.has(ruleId))return true;
   if(subject.cooldowns[ruleId]>0)return true;
   if(subject.action)return !subject.obeys[ruleId];
-  subject.cooldowns[ruleId]=ruleId==='greetingWave'?5:['centerSit','edgeJump','bellZoneKick','lampBow','turnSpin'].includes(ruleId)?6:3.5;
+  subject.cooldowns[ruleId]=ruleId==='greetingWave'?5:['centerCrouch','edgeStar','bellZoneSideKick','lampSideStep','turnSpin'].includes(ruleId)?6:3.5;
   if(subject.obeys[ruleId]) { subject.action=RULES.find(r=>r.id===ruleId)!.action; subject.actionTime=0; }
   return true;
 }
@@ -900,25 +900,26 @@ function updateSubject(s:Subject,dt:number) {
   const distance=s.root.position.distanceTo(s.waypoint);
   if(distance<1.2&&trigger(s,'turnSpin'))chooseNextWaypoint(s);
   const dir=s.waypoint.clone().sub(s.root.position); dir.y=0; dir.normalize();
-  const moveFactor=s.action==='spin'?.18:s.action?.42:1;
+  const holdsGroundPose=s.action!==null&&(['crouch','sideKick','sideStep','star'] as ActionName[]).includes(s.action);
+  const moveFactor=s.action==='spin'?.18:holdsGroundPose?.22:s.action?.42:1;
   s.root.position.addScaledVector(dir,s.speed*dt*moveFactor);
   if(dir.lengthSq()) s.root.rotation.y=THREE.MathUtils.lerp(s.root.rotation.y,Math.atan2(dir.x,dir.z),Math.min(1,dt*4));
   const gait=Math.sin(simulationTime*s.speed*5+s.id)*.1*moveFactor;
   s.body.rotation.z=gait; s.leftArm.rotation.x=gait*2; s.rightArm.rotation.x=-gait*2;
   const inCenter=Math.hypot(s.root.position.x,s.root.position.z)<centerTriggerRadius;
-  s.lastCenterInside=inCenter?(s.lastCenterInside||trigger(s,'centerSit')):false;
+  s.lastCenterInside=inCenter?(s.lastCenterInside||trigger(s,'centerCrouch')):false;
   const inEdge=Math.max(Math.abs(s.root.position.x),Math.abs(s.root.position.z))>arenaHalf*.62;
-  s.lastEdgeInside=inEdge?(s.lastEdgeInside||trigger(s,'edgeJump')):false;
+  s.lastEdgeInside=inEdge?(s.lastEdgeInside||trigger(s,'edgeStar')):false;
   const inBellZone=Math.hypot(s.root.position.x,s.root.position.z+25*arenaScale)<Math.max(2.8,5*arenaScale);
-  s.lastBellZoneInside=inBellZone?(s.lastBellZoneInside||trigger(s,'bellZoneKick')):false;
+  s.lastBellZoneInside=inBellZone?(s.lastBellZoneInside||trigger(s,'bellZoneSideKick')):false;
   const lampDistance=Math.min(...([[-24,-24],[24,-24],[-24,24],[24,24]] as [number,number][]).map(([x,z])=>Math.hypot(s.root.position.x-x*arenaScale,s.root.position.z-z*arenaScale)));
   const inLampZone=lampDistance<Math.max(2.8,4.5*arenaScale);
-  s.lastLampZoneInside=inLampZone?(s.lastLampZoneInside||trigger(s,'lampBow')):false;
+  s.lastLampZoneInside=inLampZone?(s.lastLampZoneInside||trigger(s,'lampSideStep')):false;
   if(s.action) animateAction(s,dt);
 }
 
 function resetActionPose(s:Subject) {
-  s.body.position.y=0;s.body.rotation.set(0,0,0);
+  s.body.position.set(0,0,0);s.body.rotation.set(0,0,0);
   s.upperBody.position.y=1.78;s.upperBody.rotation.set(0,0,0);
   s.leftArm.rotation.set(0,0,0);s.rightArm.rotation.set(0,0,0);
   s.leftLeg.position.set(-.34,1.75,0);s.rightLeg.position.set(.34,1.75,0);
@@ -930,20 +931,50 @@ function animateAction(s:Subject,dt:number) {
   s.actionTime+=dt; const t=s.actionTime;
   const heldPose=THREE.MathUtils.smoothstep(Math.min(t/.22,(1.25-t)/.22),0,1);
   if(s.action==='jump') s.body.position.y=Math.max(0,Math.sin(Math.min(t/1.2,1)*Math.PI)*2.25);
-  if(s.action==='wave') { s.rightArm.rotation.z=-2.55; s.rightArm.rotation.x=Math.sin(t*13)*.7; }
-  if(s.action==='spin') s.body.rotation.y=t*Math.PI*2.1;
+  if(s.action==='wave') {
+    s.rightArm.rotation.z=-2.78;
+    s.rightArm.rotation.x=Math.sin(t*15)*.95;
+    s.upperBody.rotation.z=Math.sin(t*7)*.1;
+  }
+  if(s.action==='spin') {
+    s.rightArm.rotation.z=-2.72;
+    s.leftArm.rotation.z=-1.2;
+    s.upperBody.rotation.z=.12;
+    s.body.rotation.y=t*Math.PI*2.1;
+  }
   if(s.action==='bow')s.upperBody.rotation.x=Math.sin(Math.min(t/1.2,1)*Math.PI)*.82;
-  if(s.action==='sit') {
+  if(s.action==='crouch') {
     s.upperBody.position.y=THREE.MathUtils.lerp(1.78,.95,heldPose);
     s.leftLeg.position.y=s.rightLeg.position.y=THREE.MathUtils.lerp(1.75,.95,heldPose);
     s.leftLeg.rotation.x=s.rightLeg.rotation.x=-Math.PI/2*heldPose;
     s.leftLeg.rotation.z=.12*heldPose;s.rightLeg.rotation.z=-.12*heldPose;
     s.leftKnee.rotation.x=s.rightKnee.rotation.x=Math.PI/2*heldPose;
+    s.leftArm.rotation.x=s.rightArm.rotation.x=-1.05*heldPose;
   }
-  if(s.action==='kick') {
-    s.leftLeg.rotation.x=-1.38*heldPose;
-    s.leftLeg.rotation.z=-.12*heldPose;
-    s.leftKnee.rotation.x=.2*heldPose;
+  if(s.action==='sideKick') {
+    s.leftLeg.rotation.z=-1.42*heldPose;
+    s.leftKnee.rotation.z=.12*heldPose;
+    s.upperBody.rotation.z=.3*heldPose;
+    s.leftArm.rotation.z=-.85*heldPose;
+    s.rightArm.rotation.z=.85*heldPose;
+  }
+  if(s.action==='sideStep') {
+    const step=Math.sin(t*Math.PI*3.2)*heldPose;
+    s.body.position.x=step*.62;
+    s.upperBody.rotation.z=-step*.18;
+    s.leftLeg.rotation.x=-Math.max(0,step)*.62;
+    s.rightLeg.rotation.x=-Math.max(0,-step)*.62;
+    s.leftKnee.rotation.x=Math.max(0,step)*.48;
+    s.rightKnee.rotation.x=Math.max(0,-step)*.48;
+    s.leftArm.rotation.z=-step*.72;
+    s.rightArm.rotation.z=-step*.72;
+  }
+  if(s.action==='star') {
+    s.body.position.y=.14*heldPose;
+    s.leftArm.rotation.z=-1.28*heldPose;
+    s.rightArm.rotation.z=1.28*heldPose;
+    s.leftLeg.rotation.z=-.58*heldPose;
+    s.rightLeg.rotation.z=.58*heldPose;
   }
   if(t>1.25){s.action=null;s.actionTime=0;resetActionPose(s);}
 }
