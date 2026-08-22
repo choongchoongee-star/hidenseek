@@ -122,8 +122,6 @@
             <b data-ko="클리어 + 시간 + 정확도" data-en="CLEAR + TIME + ACCURACY">클리어 + 시간 + 정확도</b>
             <small data-ko="배속은 기록 시간을 빠르게 하지 않습니다 · 총점 최대 100,000" data-en="SPEED DOES NOT ACCELERATE THE SCORE CLOCK · 100,000 MAX">배속은 기록 시간을 빠르게 하지 않습니다 · 총점 최대 100,000</small>
           </div>
-          <label class="rank-name-field"><span data-ko="랭킹 이름" data-en="LEADERBOARD NAME">랭킹 이름</span><input id="rank-name-input" type="text" minlength="2" maxlength="10" autocomplete="nickname" placeholder="2~10자" data-placeholder-ko="2~10자" data-placeholder-en="2–10 CHARACTERS" /></label>
-          <small id="rank-name-error" class="rank-name-error" aria-live="polite"></small>
           <button id="rank-start-button" class="primary"><span data-ko="랭크 도전 시작" data-en="START RANKED RUN">랭크 도전 시작</span> <b>→</b></button>
           <button id="rank-cancel-button" class="secondary" data-ko="돌아가기" data-en="BACK">돌아가기</button>
         </div>
@@ -225,6 +223,12 @@
         <div id="score-summary" class="score-summary" hidden>
           <div><span data-ko="이번 라운드" data-en="THIS ROUND">이번 라운드</span><b id="round-score">0</b></div>
           <div><span data-ko="누적 점수" data-en="RUN TOTAL">누적 점수</span><b id="total-score">0</b></div>
+        </div>
+        <div id="rank-submit-panel" class="rank-submit-panel" hidden>
+          <p data-ko="완주 기록에 사용할 닉네임을 입력하세요." data-en="ENTER A NAME FOR THIS COMPLETED RUN.">완주 기록에 사용할 닉네임을 입력하세요.</p>
+          <label class="rank-name-field"><span data-ko="랭킹 이름" data-en="LEADERBOARD NAME">랭킹 이름</span><input id="rank-name-input" type="text" minlength="2" maxlength="10" autocomplete="nickname" placeholder="2~10자" data-placeholder-ko="2~10자" data-placeholder-en="2–10 CHARACTERS" /></label>
+          <small id="rank-name-error" class="rank-name-error" aria-live="polite"></small>
+          <button id="rank-submit-button" class="primary"><span data-ko="기록 등록" data-en="SUBMIT SCORE">기록 등록</span> <b>→</b></button>
         </div>
         <p id="ranked-result-status" class="ranked-result-status" hidden></p>
         <button id="replay-button" class="primary"><span data-ko="다시 플레이" data-en="PLAY AGAIN">다시 플레이</span> <b>↻</b></button>

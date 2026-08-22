@@ -285,6 +285,12 @@ body:not(.touch-mode) .rule-notes footer { padding: 9px 0 0; border: 0; color: r
 .score-summary div + div { border-left: 1px solid rgba(255,255,255,.16); }
 .score-summary span { display: block; margin-bottom: 5px; color: rgba(255,255,255,.46); font-size: 10px; }
 .score-summary b { color: var(--yellow); font-size: 21px; }
+.rank-submit-panel { width: min(520px,80vw); margin: -14px 0 24px; padding: 15px 0 18px; border-block: 1px solid rgba(255,255,255,.16); text-align: left; }
+.rank-submit-panel[hidden] { display: none; }
+.rank-submit-panel > p { margin: 0 0 12px; color: rgba(244,241,232,.72); font-size: 11px; line-height: 1.5; }
+.rank-submit-panel .rank-name-field { margin-top: 0; }
+.rank-submit-panel .rank-name-error { min-height: 25px; }
+.rank-submit-panel .primary { width: 100%; min-height: 50px; }
 .ranked-result-status.saved { color: #75e1bb !important; }
 .ranked-result-status.error { color: #ff9d8f !important; }
 
@@ -465,6 +471,7 @@ kbd.wide-key { min-width: 80px; }
   .reveal b { font-size: 16px; }
   .score-summary { width: 100%; margin-bottom: 24px; }
   .score-summary div { padding-inline: 8px; }
+  .rank-submit-panel { width: 100%; margin-bottom: 18px; padding-block: 12px 14px; }
   .leaderboard-screen { padding: calc(20px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left)); }
   .leaderboard-heading { margin-bottom: 18px; }
   .leaderboard-heading h2 { font-size: 42px; }
