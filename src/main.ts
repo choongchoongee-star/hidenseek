@@ -5,6 +5,7 @@ import type { LeaderboardEntry } from './firebase';
 
 type RuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'centerCrouch' | 'edgeStar' | 'bellZoneSideKick' | 'lampSideStep' | 'greetingWave' | 'turnSpin';
 type SpatialRuleId = 'centerCrouch' | 'edgeStar' | 'bellZoneSideKick' | 'lampSideStep';
+type EncounterRuleId = 'redJump' | 'blueSpin' | 'yellowWave' | 'hatBow' | 'greetingWave';
 type RuleNoteId = RuleId | 'bell';
 type ActionName = 'jump' | 'wave' | 'spin' | 'bow' | 'crouch' | 'sideKick' | 'sideStep' | 'star';
 type SubjectMark = '?' | '✓' | null;
@@ -54,6 +55,20 @@ interface Subject {
   lastLampZoneInside: boolean;
  }
 
+interface ObservationEncounter {
+  ruleId: EncounterRuleId;
+  first: Subject;
+  second: Subject;
+  tested: Subject[];
+  stageFirstPoint: THREE.Vector3;
+  stageSecondPoint: THREE.Vector3;
+  closeFirstPoint: THREE.Vector3;
+  closeSecondPoint: THREE.Vector3;
+  phase: 'staging'|'closing'|'holding';
+  holdTime: number;
+  expiresAt: number;
+}
+
 const RULES: RuleDefinition[] = [
   { id:'redJump', action:'jump', stimulus:'red', label:{ko:'빨강 점프',en:'RED JUMP'}, note:{ko:'빨간 옷 근처 → 점프',en:'Near a red shirt → JUMP'} },
   { id:'blueSpin', action:'spin', stimulus:'blue', label:{ko:'파랑 회전',en:'BLUE SPIN'}, note:{ko:'파란 옷 근처 → 회전',en:'Near a blue shirt → SPIN'} },
@@ -71,12 +86,14 @@ const RANKED_SEQUENCE = [6,9,12] as const;
 const INITIAL_BELL_INTERVAL = [10.5,15] as const;
 const BELL_INTERVAL = [15,21] as const;
 const SPATIAL_RULE_IDS:SpatialRuleId[]=['centerCrouch','edgeStar','bellZoneSideKick','lampSideStep'];
+const ENCOUNTER_RULE_IDS:EncounterRuleId[]=['redJump','blueSpin','yellowWave','hatBow','greetingWave'];
 const SUBJECT_NAMES = ['영수','영호','영식','영철','광수','상철','민수','준호','태수','성훈','진우','동진','영숙','정숙','순자','영자','옥순','현숙','지영','수진','민지','혜진','은영','보람'];
 const ARENA_SIZES:Record<typeof PARTICIPANT_OPTIONS[number],number>={6:30,9:38,12:44};
 let RULE_NOTE_ORDER:RuleNoteId[]=[...RULES.slice(0,4).map(rule=>rule.id),'bell'];
 const ruleNoteMarks={} as Record<RuleNoteId,RuleNoteMark>;
 [...RULES.map(rule=>rule.id),'bell' as const].forEach(ruleId=>ruleNoteMarks[ruleId]=null);
 const ACTION_LABELS:Record<ActionName,LocalizedCopy>={jump:{ko:'점프',en:'JUMP'},wave:{ko:'손 흔들기',en:'WAVE'},spin:{ko:'회전',en:'SPIN'},bow:{ko:'허리 숙이기',en:'BOW'},crouch:{ko:'쪼그려 앉기',en:'CROUCH'},sideKick:{ko:'옆차기',en:'SIDE KICK'},sideStep:{ko:'좌우 스텝',en:'SIDE-STEP'},star:{ko:'별 자세',en:'STAR POSE'}};
+const ACTION_DURATION:Record<ActionName,number>={jump:1.25,wave:1.25,spin:1.3,bow:1.25,crouch:1.45,sideKick:1.25,sideStep:1.4,star:1.25};
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const touchMode = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).has('touch');
@@ -153,6 +170,7 @@ const shirtColors = [0xc94f43,0x325b82,0xc8a642,0x567359,0x703e68,0xd3d0bd];
 const pantsColors = [0x222a35,0x4a4037,0x26362e,0x47464d];
 const skinColors = [0xf0c6a1,0xc98d62,0x8e573d,0x5e382b];
 const hairColors = [0x17130f,0x4a2d1a,0xd0aa65,0x6a6a62];
+const HAT_SUBJECT_IDS = new Set([1,4,8,10,13,16,19,22]);
 const subjects: Subject[] = [];
 const pickables: THREE.Object3D[] = [];
 const questionTexture = makeSymbolTexture('?', '#74b9e8');
@@ -200,7 +218,7 @@ function makeSubject(id: number): Subject {
   const body = new THREE.Group(); root.add(body);
   const upperBody = new THREE.Group(); upperBody.position.y=1.78;body.add(upperBody);
   const shirt = id < 3 ? 0xc94f43 : shirtColors[id % shirtColors.length];
-  const hat = id % 3 === 1 || id === 10;
+  const hat = HAT_SUBJECT_IDS.has(id);
   const skin = skinColors[id % skinColors.length];
   const torso = mesh(new THREE.BoxGeometry(1.18,1.55,.72),mat(shirt),upperBody,.77); torso.userData.subjectId=id;
   const head = mesh(new THREE.BoxGeometry(.88,.9,.78),mat(skin),upperBody,2); head.userData.subjectId=id;
@@ -271,6 +289,11 @@ let roundStartedAt = 0;
 let casualPausedMs = 0;
 let casualPauseStartedAt = 0;
 let bellTimer:number = INITIAL_BELL_INTERVAL[0];
+let observationEncounter:ObservationEncounter|null=null;
+let nextObservationOpportunityAt=0;
+let observationRuleCursor=0;
+let observationSubjectCursor=0;
+let observationAnchorCursor=0;
 let gameSpeed:GameSpeed = 1;
 let yaw = 0;
 let pitch = -.28;
@@ -776,6 +799,110 @@ function chooseNextWaypoint(subject:Subject) {
   subject.randomWaypointDue=true;
 }
 
+function activeEncounterRuleIds() {
+  return activeRules.map(rule=>rule.id).filter((ruleId):ruleId is EncounterRuleId=>ENCOUNTER_RULE_IDS.includes(ruleId as EncounterRuleId));
+}
+
+function observationPointFor(subject:Subject) {
+  const encounter=observationEncounter;if(!encounter)return null;
+  const closing=encounter.phase!=='staging';
+  if(subject===encounter.first)return closing?encounter.closeFirstPoint:encounter.stageFirstPoint;
+  if(subject===encounter.second)return closing?encounter.closeSecondPoint:encounter.stageSecondPoint;
+  return null;
+}
+
+function observationConflictScore(subject:Subject,scheduledRuleId:EncounterRuleId) {
+  return activeRules.filter(rule=>rule.id!==scheduledRuleId&&rule.stimulus&&stimulusPoolFor(rule).includes(subject)).length;
+}
+
+function finishObservationEncounter(delay=THREE.MathUtils.randFloat(4,6)) {
+  const encounter=observationEncounter;if(!encounter)return;
+  observationEncounter=null;
+  for(const subject of new Set([encounter.first,encounter.second]))if(activeSubjectIds.has(subject.id))chooseNextWaypoint(subject);
+  nextObservationOpportunityAt=simulationTime+delay;
+}
+
+function scheduleObservationEncounter() {
+  const encounterRuleIds=activeEncounterRuleIds();
+  if(!encounterRuleIds.length){nextObservationOpportunityAt=Number.POSITIVE_INFINITY;return;}
+  const ruleId=encounterRuleIds[observationRuleCursor%encounterRuleIds.length];
+  observationRuleCursor=(observationRuleCursor+1)%encounterRuleIds.length;
+  let first:Subject|null=null;
+  for(let offset=0;offset<activeSubjects.length;offset++) {
+    const index=(observationSubjectCursor+offset)%activeSubjects.length;
+    const candidate=activeSubjects[index];
+    if(!candidate.action&&candidate.cooldowns[ruleId]<=0) {
+      first=candidate;observationSubjectCursor=(index+1)%activeSubjects.length;break;
+    }
+  }
+  if(!first){nextObservationOpportunityAt=simulationTime+2;return;}
+  let second:Subject|undefined;
+  let tested:Subject[]=[first];
+  if(ruleId==='greetingWave') {
+    second=shuffle(activeSubjects.filter(subject=>subject!==first&&!subject.action&&subject.cooldowns[ruleId]<=0))[0];
+    if(second)tested=[first,second];
+  } else {
+    const rule=RULES.find(candidate=>candidate.id===ruleId)!;
+    const candidates=shuffle(activeSubjects.filter(subject=>subject!==first&&stimulusPoolFor(rule).includes(subject)&&!subject.action));
+    candidates.sort((a,b)=>observationConflictScore(a,ruleId)-observationConflictScore(b,ruleId));
+    second=candidates[0]??shuffle(activeSubjects.filter(subject=>subject!==first&&stimulusPoolFor(rule).includes(subject)))[0];
+  }
+  if(!second){nextObservationOpportunityAt=simulationTime+2;return;}
+  const angle=observationAnchorCursor++*2.3999632297+Math.random()*.25;
+  const radius=Math.min(arenaHalf*.42,centerTriggerRadius+3.2);
+  const anchor=new THREE.Vector3(Math.cos(angle)*radius,0,Math.sin(angle)*radius);
+  const axis=new THREE.Vector3(-Math.sin(angle),0,Math.cos(angle));
+  const stageDistance=3.2,closeDistance=.72;
+  const stageFirstPoint=anchor.clone().addScaledVector(axis,stageDistance);
+  const stageSecondPoint=anchor.clone().addScaledVector(axis,-stageDistance);
+  const closeFirstPoint=anchor.clone().addScaledVector(axis,closeDistance);
+  const closeSecondPoint=anchor.clone().addScaledVector(axis,-closeDistance);
+  observationEncounter={ruleId,first,second,tested,stageFirstPoint,stageSecondPoint,closeFirstPoint,closeSecondPoint,phase:'staging',holdTime:0,expiresAt:simulationTime+18};
+  first.waypoint.copy(stageFirstPoint);second.waypoint.copy(stageSecondPoint);
+}
+
+function faceObservationPair(encounter:ObservationEncounter) {
+  const toSecond=encounter.second.root.position.clone().sub(encounter.first.root.position);
+  encounter.first.root.rotation.y=Math.atan2(toSecond.x,toSecond.z);
+  encounter.second.root.rotation.y=Math.atan2(-toSecond.x,-toSecond.z);
+}
+
+function updateObservationScheduler(dt:number) {
+  if(!observationEncounter) {
+    if(simulationTime>=nextObservationOpportunityAt)scheduleObservationEncounter();
+    return;
+  }
+  const encounter=observationEncounter;
+  if(simulationTime>=encounter.expiresAt){finishObservationEncounter(THREE.MathUtils.randFloat(3,5));return;}
+  const firstPoint=observationPointFor(encounter.first)!;
+  const secondPoint=observationPointFor(encounter.second)!;
+  encounter.first.waypoint.copy(firstPoint);encounter.second.waypoint.copy(secondPoint);
+  const firstArrived=encounter.first.root.position.distanceToSquared(firstPoint)<.16;
+  const secondArrived=encounter.second.root.position.distanceToSquared(secondPoint)<.16;
+  if(encounter.phase==='staging'&&firstArrived&&secondArrived) {
+    encounter.first.root.position.copy(firstPoint);encounter.second.root.position.copy(secondPoint);
+    if(encounter.tested.every(subject=>!subject.action&&subject.cooldowns[encounter.ruleId]<=0)) {
+      encounter.phase='closing';
+      encounter.first.waypoint.copy(encounter.closeFirstPoint);encounter.second.waypoint.copy(encounter.closeSecondPoint);
+    }
+    return;
+  }
+  if(encounter.phase==='closing'&&firstArrived&&secondArrived) {
+    encounter.first.root.position.copy(firstPoint);encounter.second.root.position.copy(secondPoint);
+    encounter.phase='holding';encounter.holdTime=0;faceObservationPair(encounter);return;
+  }
+  if(encounter.phase==='holding') {
+    encounter.first.root.position.copy(encounter.closeFirstPoint);encounter.second.root.position.copy(encounter.closeSecondPoint);
+    faceObservationPair(encounter);encounter.holdTime+=dt;
+    if(encounter.holdTime>=1.35)finishObservationEncounter();
+  }
+}
+
+function resetObservationScheduler() {
+  observationEncounter=null;observationRuleCursor=0;observationSubjectCursor=Math.floor(Math.random()*Math.max(1,activeSubjects.length));observationAnchorCursor=Math.random()*8;
+  nextObservationOpportunityAt=simulationTime+THREE.MathUtils.randFloat(4,6);
+}
+
 function configureArena() {
   arenaSize=ARENA_SIZES[participantCount];arenaHalf=arenaSize/2;arenaScale=arenaSize/58;centerTriggerRadius=5.6*arenaScale;
   environment.scale.set(arenaScale,1,arenaScale);
@@ -789,15 +916,26 @@ function stimulusPoolFor(rule:RuleDefinition) {
   return [];
 }
 
+function requireSubjects(required:Subject[],predicate:(subject:Subject)=>boolean,desired:number,count:number,label:string) {
+  while(required.filter(predicate).length<desired) {
+    const candidate=shuffle(subjects.filter(subject=>predicate(subject)&&!required.includes(subject)))[0];
+    if(!candidate||required.length>=count)throw new Error(`Could not satisfy participant appearance requirement: ${label}.`);
+    required.push(candidate);
+  }
+}
+
 function chooseParticipants(count:number,rules:RuleDefinition[],target:RuleDefinition) {
   const required:Subject[]=[];
-  for(const rule of [target,...shuffle(rules.filter(candidate=>candidate!==target))]) {
-    const desired=rule===target?2:1;
-    const stimulusPool=stimulusPoolFor(rule);
-    for(const subject of shuffle(stimulusPool)) {
-      if(required.length>=count||required.filter(candidate=>stimulusPool.includes(candidate)).length>=desired)break;
-      if(!required.includes(subject))required.push(subject);
+  if(rules.some(rule=>rule.id==='hatBow')) {
+    for(const colorRule of rules.filter(rule=>rule.stimulus&&rule.stimulus!=='hat')) {
+      const colorPool=new Set(stimulusPoolFor(colorRule));
+      requireSubjects(required,subject=>colorPool.has(subject)&&!subject.hat,1,count,`${colorRule.id}: color without hat`);
+      requireSubjects(required,subject=>!colorPool.has(subject)&&subject.hat,1,count,`${colorRule.id}: non-color with hat`);
     }
+  }
+  for(const rule of [target,...shuffle(rules.filter(candidate=>candidate!==target))]) {
+    const stimulusPool=stimulusPoolFor(rule);
+    if(stimulusPool.length)requireSubjects(required,subject=>stimulusPool.includes(subject),2,count,`${rule.id}: two stimulus NPCs`);
   }
   const remaining=shuffle(subjects.filter(subject=>!required.includes(subject))).slice(0,count-required.length);
   return shuffle([...required,...remaining]);
@@ -847,11 +985,12 @@ function configureRound() {
   });
   activeSubjects.forEach((subject,index)=>subject.root.position.set((index%columns-(columns-1)/2)*6.5,0,(Math.floor(index/columns)-(rows-1)/2)*7));
   validateRoundConfiguration();
-  attemptLimit=attemptLimitForParticipants();attempts=attemptLimit;roundElapsedTime=0;simulationTime=0;roundStartedAt=performance.now();casualPausedMs=0;casualPauseStartedAt=0;bellTimer=THREE.MathUtils.randFloat(INITIAL_BELL_INTERVAL[0],INITIAL_BELL_INTERVAL[1]);renderRuleNotes();updateAttempts();resetRuleNotes();
+  attemptLimit=attemptLimitForParticipants();attempts=attemptLimit;roundElapsedTime=0;simulationTime=0;resetObservationScheduler();proximityTimer=0;roundStartedAt=performance.now();casualPausedMs=0;casualPauseStartedAt=0;bellTimer=THREE.MathUtils.randFloat(INITIAL_BELL_INTERVAL[0],INITIAL_BELL_INTERVAL[1]);renderRuleNotes();updateAttempts();resetRuleNotes();
 }
 
 function validateRoundConfiguration() {
   const expectedRuleCount=ruleCountForParticipants();
+  if(activeSubjects.length!==participantCount||new Set(activeSubjects.map(subject=>subject.id)).size!==participantCount)throw new Error('A round must contain the selected number of unique participants.');
   if(activeRules.length!==expectedRuleCount||new Set(activeRules.map(rule=>rule.id)).size!==expectedRuleCount)throw new Error(`A ${participantCount}-NPC round must select ${expectedRuleCount} distinct behavior rules.`);
   if(new Set(activeRules.map(rule=>rule.action)).size!==expectedRuleCount)throw new Error('Active behavior rules must use distinct actions.');
   if(!activeRuleIds.has(targetRule.id))throw new Error('Target rule must be active.');
@@ -860,8 +999,15 @@ function validateRoundConfiguration() {
     const obeyCount=activeSubjects.filter(subject=>subject.obeys[rule.id]).length;
     if(rule.id===targetRule.id&&obeyCount!==participantCount-1)throw new Error('Target rule must be N-1:1.');
     if(rule.id!==targetRule.id&&Math.abs(obeyCount-participantCount/2)>.5)throw new Error('Noise rules must split subjects as evenly as possible.');
-    const requiredStimuli=rule.stimulus?(rule.id===targetRule.id?2:1):0;
+    const requiredStimuli=rule.stimulus?2:0;
     if(requiredStimuli&&activeSubjects.filter(subject=>stimulusPoolFor(rule).includes(subject)).length<requiredStimuli)throw new Error('Active appearance rules require visible stimulus NPCs.');
+  }
+  if(activeRuleIds.has('hatBow')) {
+    for(const colorRule of activeRules.filter(rule=>rule.stimulus&&rule.stimulus!=='hat')) {
+      const colorPool=new Set(stimulusPoolFor(colorRule));
+      if(!activeSubjects.some(subject=>colorPool.has(subject)&&!subject.hat))throw new Error(`${colorRule.id} requires a color-without-hat cross-sample.`);
+      if(!activeSubjects.some(subject=>!colorPool.has(subject)&&subject.hat))throw new Error(`${colorRule.id} requires a non-color-with-hat cross-sample.`);
+    }
   }
   const bellObeyCount=activeSubjects.filter(subject=>subject.bellObeys).length;
   if(Math.abs(bellObeyCount-participantCount/2)>.5)throw new Error('Bell noise must split subjects as evenly as possible.');
@@ -880,6 +1026,7 @@ function trigger(subject:Subject, ruleId:RuleId) {
 
 function ringBell() {
   bellTimer=THREE.MathUtils.randFloat(BELL_INTERVAL[0],BELL_INTERVAL[1]);
+  if(observationEncounter&&[observationEncounter.first,observationEncounter.second].some(subject=>subject.bellObeys))finishObservationEncounter(THREE.MathUtils.randFloat(5.25,7.75));
   activeSubjects.forEach(subject=>{
     if(!subject.bellObeys)return;
     resetActionPose(subject);
@@ -895,15 +1042,16 @@ function playBellSound() {
   [523.25,659.25,783.99].forEach((freq,i)=>{const osc=ctx.createOscillator();osc.type='sine';osc.frequency.value=freq;osc.connect(gain);osc.start(ctx.currentTime+i*.035);osc.stop(ctx.currentTime+1.5);});
 }
 
-function updateSubject(s:Subject,dt:number) {
+function updateSubject(s:Subject,dt:number,actionDt:number) {
   (Object.keys(s.cooldowns) as RuleId[]).forEach(id=>s.cooldowns[id]=Math.max(0,s.cooldowns[id]-dt));
+  const observationPoint=observationPointFor(s);if(observationPoint)s.waypoint.copy(observationPoint);
   const distance=s.root.position.distanceTo(s.waypoint);
-  if(distance<1.2&&trigger(s,'turnSpin'))chooseNextWaypoint(s);
+  if(!observationPoint&&distance<1.2&&trigger(s,'turnSpin'))chooseNextWaypoint(s);
   const dir=s.waypoint.clone().sub(s.root.position); dir.y=0; dir.normalize();
-  const holdsGroundPose=s.action!==null&&(['crouch','sideKick','sideStep','star'] as ActionName[]).includes(s.action);
-  const moveFactor=s.action==='spin'?.18:holdsGroundPose?.22:s.action?.42:1;
+  const observationHolding=observationEncounter?.phase==='holding'&&(s===observationEncounter.first||s===observationEncounter.second);
+  const moveFactor=observationHolding||s.action==='sideStep'||s.action==='crouch'?0:s.action==='spin'?.12:s.action==='sideKick'||s.action==='star'?.1:s.action?.42:1;
   s.root.position.addScaledVector(dir,s.speed*dt*moveFactor);
-  if(dir.lengthSq()) s.root.rotation.y=THREE.MathUtils.lerp(s.root.rotation.y,Math.atan2(dir.x,dir.z),Math.min(1,dt*4));
+  if(dir.lengthSq()&&moveFactor>0) s.root.rotation.y=THREE.MathUtils.lerp(s.root.rotation.y,Math.atan2(dir.x,dir.z),Math.min(1,dt*4));
   const gait=Math.sin(simulationTime*s.speed*5+s.id)*.1*moveFactor;
   s.body.rotation.z=gait; s.leftArm.rotation.x=gait*2; s.rightArm.rotation.x=-gait*2;
   const inCenter=Math.hypot(s.root.position.x,s.root.position.z)<centerTriggerRadius;
@@ -915,7 +1063,7 @@ function updateSubject(s:Subject,dt:number) {
   const lampDistance=Math.min(...([[-24,-24],[24,-24],[-24,24],[24,24]] as [number,number][]).map(([x,z])=>Math.hypot(s.root.position.x-x*arenaScale,s.root.position.z-z*arenaScale)));
   const inLampZone=lampDistance<Math.max(2.8,4.5*arenaScale);
   s.lastLampZoneInside=inLampZone?(s.lastLampZoneInside||trigger(s,'lampSideStep')):false;
-  if(s.action) animateAction(s,dt);
+  if(s.action) animateAction(s,actionDt);
 }
 
 function resetActionPose(s:Subject) {
@@ -927,56 +1075,69 @@ function resetActionPose(s:Subject) {
   s.leftKnee.rotation.set(0,0,0);s.rightKnee.rotation.set(0,0,0);
 }
 
+function poseEnvelope(t:number,duration:number,ramp=.2) {
+  const enter=THREE.MathUtils.smootherstep(t,0,ramp);
+  const exit=1-THREE.MathUtils.smootherstep(t,duration-ramp,duration);
+  return Math.min(enter,exit);
+}
+
+function sideStepPose(t:number) {
+  if(t<.2)return -THREE.MathUtils.smootherstep(t,0,.2);
+  if(t<.55)return -1;
+  if(t<.85)return THREE.MathUtils.lerp(-1,1,THREE.MathUtils.smootherstep(t,.55,.85));
+  if(t<1.2)return 1;
+  return THREE.MathUtils.lerp(1,0,THREE.MathUtils.smootherstep(t,1.2,ACTION_DURATION.sideStep));
+}
+
 function animateAction(s:Subject,dt:number) {
-  s.actionTime+=dt; const t=s.actionTime;
-  const heldPose=THREE.MathUtils.smoothstep(Math.min(t/.22,(1.25-t)/.22),0,1);
-  if(s.action==='jump') s.body.position.y=Math.max(0,Math.sin(Math.min(t/1.2,1)*Math.PI)*2.25);
-  if(s.action==='wave') {
-    s.rightArm.rotation.z=-2.78;
-    s.rightArm.rotation.x=Math.sin(t*15)*.95;
-    s.upperBody.rotation.z=Math.sin(t*7)*.1;
+  s.actionTime+=dt;const t=s.actionTime;const action=s.action;if(!action)return;
+  const duration=ACTION_DURATION[action];const heldPose=poseEnvelope(t,duration);
+  if(action==='jump')s.body.position.y=Math.max(0,Math.sin(Math.min(t/duration,1)*Math.PI)*2.25);
+  if(action==='wave') {
+    s.rightArm.rotation.z=-2.78*heldPose;
+    s.rightArm.rotation.x=Math.sin(t*15)*.95*heldPose;
+    s.upperBody.rotation.z=Math.sin(t*7)*.1*heldPose;
   }
-  if(s.action==='spin') {
-    s.rightArm.rotation.z=-2.72;
-    s.leftArm.rotation.z=-1.2;
-    s.upperBody.rotation.z=.12;
-    s.body.rotation.y=t*Math.PI*2.1;
+  if(action==='spin') {
+    const progress=THREE.MathUtils.smootherstep(t,0,duration);
+    s.leftArm.rotation.z=-Math.PI/2*heldPose;
+    s.rightArm.rotation.z=Math.PI/2*heldPose;
+    s.body.rotation.y=Math.PI*2*progress;
   }
-  if(s.action==='bow')s.upperBody.rotation.x=Math.sin(Math.min(t/1.2,1)*Math.PI)*.82;
-  if(s.action==='crouch') {
-    s.upperBody.position.y=THREE.MathUtils.lerp(1.78,.95,heldPose);
-    s.leftLeg.position.y=s.rightLeg.position.y=THREE.MathUtils.lerp(1.75,.95,heldPose);
-    s.leftLeg.rotation.x=s.rightLeg.rotation.x=-Math.PI/2*heldPose;
-    s.leftLeg.rotation.z=.12*heldPose;s.rightLeg.rotation.z=-.12*heldPose;
-    s.leftKnee.rotation.x=s.rightKnee.rotation.x=Math.PI/2*heldPose;
-    s.leftArm.rotation.x=s.rightArm.rotation.x=-1.05*heldPose;
+  if(action==='bow')s.upperBody.rotation.x=Math.sin(Math.min(t/duration,1)*Math.PI)*.82;
+  if(action==='crouch') {
+    s.upperBody.position.y=THREE.MathUtils.lerp(1.78,.88,heldPose);
+    s.leftLeg.position.y=s.rightLeg.position.y=THREE.MathUtils.lerp(1.75,1.08,heldPose);
+    s.leftLeg.rotation.x=s.rightLeg.rotation.x=-1.35*heldPose;
+    s.leftKnee.rotation.x=s.rightKnee.rotation.x=1.35*heldPose;
+    s.leftLeg.rotation.z=-.32*heldPose;s.rightLeg.rotation.z=.32*heldPose;
+    s.leftKnee.rotation.z=.32*heldPose;s.rightKnee.rotation.z=-.32*heldPose;
+    s.leftArm.rotation.z=-.5*heldPose;s.rightArm.rotation.z=.5*heldPose;
   }
-  if(s.action==='sideKick') {
+  if(action==='sideKick') {
     s.leftLeg.rotation.z=-1.42*heldPose;
     s.leftKnee.rotation.z=.12*heldPose;
     s.upperBody.rotation.z=.3*heldPose;
     s.leftArm.rotation.z=-.85*heldPose;
     s.rightArm.rotation.z=.85*heldPose;
   }
-  if(s.action==='sideStep') {
-    const step=Math.sin(t*Math.PI*3.2)*heldPose;
-    s.body.position.x=step*.62;
-    s.upperBody.rotation.z=-step*.18;
-    s.leftLeg.rotation.x=-Math.max(0,step)*.62;
-    s.rightLeg.rotation.x=-Math.max(0,-step)*.62;
-    s.leftKnee.rotation.x=Math.max(0,step)*.48;
-    s.rightKnee.rotation.x=Math.max(0,-step)*.48;
-    s.leftArm.rotation.z=-step*.72;
-    s.rightArm.rotation.z=-step*.72;
+  if(action==='sideStep') {
+    const side=sideStepPose(t),left=Math.max(0,-side),right=Math.max(0,side);
+    s.body.position.x=side*.75;
+    s.upperBody.rotation.z=-side*.16;
+    s.leftLeg.rotation.z=-left*.32;s.rightLeg.rotation.z=right*.32;
+    s.rightLeg.rotation.x=-left*.58;s.rightKnee.rotation.x=left*.48;
+    s.leftLeg.rotation.x=-right*.58;s.leftKnee.rotation.x=right*.48;
+    s.leftArm.rotation.z=side*.72;s.rightArm.rotation.z=side*.72;
   }
-  if(s.action==='star') {
+  if(action==='star') {
     s.body.position.y=.14*heldPose;
-    s.leftArm.rotation.z=-1.28*heldPose;
-    s.rightArm.rotation.z=1.28*heldPose;
+    s.leftArm.rotation.z=-2.25*heldPose;
+    s.rightArm.rotation.z=2.25*heldPose;
     s.leftLeg.rotation.z=-.58*heldPose;
     s.rightLeg.rotation.z=.58*heldPose;
   }
-  if(t>1.25){s.action=null;s.actionTime=0;resetActionPose(s);}
+  if(t>=duration){s.action=null;s.actionTime=0;resetActionPose(s);}
 }
 
 function processProximityRules() {
@@ -1500,5 +1661,5 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;if(touchMode
 applyLanguage();
 const incomingSharedResult=parseSharedResult();if(incomingSharedResult)openShareScreen(incomingSharedResult,'link');
 const clock=new THREE.Clock(); let proximityTimer=0;
-function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const realDt=Math.min(clock.getDelta(),.05);if(playing){updateRoundClock();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundElapsedTime/60)).padStart(2,'0')}:${String(Math.floor(roundElapsedTime%60)).padStart(2,'0')}`;}if(playing&&!paused){const simulationDt=realDt*gameSpeed;simulationTime+=simulationDt;bellTimer-=simulationDt;bell.scale.lerp(new THREE.Vector3(1,1,1),simulationDt*5);if(bellTimer<=0)ringBell();activeSubjects.forEach(s=>updateSubject(s,simulationDt));proximityTimer-=simulationDt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode&&followedSubject)applyMobileCamera();else if(!touchMode)updateCamera(realDt);updateTargeting();}renderer.render(scene,camera)}
+function frame(){requestAnimationFrame(frame);if(!pointerLockAllowed()&&document.pointerLockElement)releasePointerLockNow();const realDt=Math.min(clock.getDelta(),.05);if(playing){updateRoundClock();document.querySelector('#timer')!.textContent=`${String(Math.floor(roundElapsedTime/60)).padStart(2,'0')}:${String(Math.floor(roundElapsedTime%60)).padStart(2,'0')}`;}if(playing&&!paused){const simulationDt=realDt*gameSpeed;const actionDt=realDt*Math.sqrt(gameSpeed);simulationTime+=simulationDt;bellTimer-=simulationDt;bell.scale.lerp(new THREE.Vector3(1,1,1),simulationDt*5);if(bellTimer<=0)ringBell();updateObservationScheduler(simulationDt);activeSubjects.forEach(s=>updateSubject(s,simulationDt,actionDt));proximityTimer-=simulationDt;if(proximityTimer<=0){processProximityRules();proximityTimer=.18}if(touchMode&&followedSubject)applyMobileCamera();else if(!touchMode)updateCamera(realDt);updateTargeting();}renderer.render(scene,camera)}
 frame();
